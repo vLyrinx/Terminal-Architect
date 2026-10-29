@@ -1,0 +1,65 @@
+class_name CommandRunner
+extends Node
+## Runs player action commands (checklist step 11). See game_command.gd.
+##
+## Tools never change the airport directly: they make a command and call
+## submit(). The runner executes it and keeps a history, which undo, saving and
+## co-op will build on later. Commands reach the systems they change through
+## the exported references here.
+
+## Emitted after a command runs successfully.
+signal command_executed(command: RefCounted)
+## Emitted when a command is refused; command.error says why.
+signal command_failed(command: RefCounted)
+
+const PlaceObjectCommandScript := preload("res://scripts/core/commands/place_object_command.gd")
+const RotateObjectCommandScript := preload("res://scripts/core/commands/rotate_object_command.gd")
+const DeleteObjectCommandScript := preload("res://scripts/core/commands/delete_object_command.gd")
+## Oldest commands are dropped from the history beyond this.
+const MAX_HISTORY := 500
+
+## The PlacedObjects node (placed_objects.gd).
+@export var placed_objects: Node3D
+
+## Commands that ran, oldest first.
+var history: Array = []
+
+
+## Runs a command. Returns false (and changes nothing) if it was refused.
+func submit(command: RefCounted) -> bool:
+	if not command.execute(self):
+		print("CMD | refused %s: %s" % [command.describe(), command.error])
+		command_failed.emit(command)
+		return false
+	history.append(command)
+	if history.size() > MAX_HISTORY:
+		history.pop_front()
+	print("CMD | %s" % command.describe())
+	command_executed.emit(command)
+	return true
+
+
+## Undoes the most recent command. Not bound to a key yet.
+func undo_last() -> bool:
+	if history.is_empty():
+		return false
+	var command: RefCounted = history.pop_back()
+	command.undo(self)
+	print("CMD | undo %s" % command.describe())
+	return true
+
+
+## Rebuilds a command from to_dict() data (for saves and co-op). Null if unknown.
+static func command_from_dict(data: Dictionary) -> RefCounted:
+	var command: RefCounted
+	match data.get("type", ""):
+		"place_object":
+			command = PlaceObjectCommandScript.new()
+		"rotate_object":
+			command = RotateObjectCommandScript.new()
+		"delete_object":
+			command = DeleteObjectCommandScript.new()
+		_:
+			return null
+	command.load_dict(data)
+	return command

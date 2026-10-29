@@ -39,6 +39,9 @@ const TOP_COLOR := Color(0.52, 0.55, 0.60)
 ## Door lintels have a blue top so doorways show from above too.
 const DOOR_TOP_COLOR := Color(0.36, 0.62, 0.92)
 
+## Optional PlacedObjects node (placed_objects.gd): walls aren't built through objects.
+@export var placed_objects: Node3D
+
 ## Per floor index: [horizontal edges, vertical edges], one byte per corner.
 var _edges := {}
 ## Vector3i(chunk x, chunk y, floor index) -> MeshInstance3D
@@ -92,7 +95,7 @@ func count_run_changes(from: Vector2i, to: Vector2i, place: bool, floor_index :=
 	var count := 0
 	for edge: Array in get_run_edges(from, to):
 		var empty := get_edge(edge[0], edge[1], floor_index) == Piece.NONE
-		if empty == place:
+		if empty == place and not (place and _is_blocked(edge[0], edge[1], floor_index)):
 			count += 1
 	return count
 
@@ -110,7 +113,8 @@ func get_piece_counts(floor_index := 0) -> Dictionary:
 # --- Editing --------------------------------------------------------------------
 
 ## Builds walls on the empty edges between two corners (place = true), or removes
-## walls and doors there (place = false). Existing doors are kept when placing.
+## walls and doors there (place = false). Existing doors are kept when placing,
+## and edges that would cut through a placed object are skipped.
 ## The corners must be on one grid line. Returns how many edges changed.
 func set_run(from: Vector2i, to: Vector2i, place: bool, floor_index := 0) -> int:
 	var edges := get_run_edges(from, to)
@@ -123,7 +127,7 @@ func set_run(from: Vector2i, to: Vector2i, place: bool, floor_index := 0) -> int
 	for edge: Array in edges:
 		var corner: Vector2i = edge[0]
 		var i := corner.x + corner.y * _stride
-		if place and arr[i] == Piece.NONE:
+		if place and arr[i] == Piece.NONE and not _is_blocked(corner, edge[1], floor_index):
 			arr[i] = Piece.WALL
 			changed += 1
 		elif not place and arr[i] != Piece.NONE:
@@ -165,6 +169,11 @@ func _piece(arr: PackedByteArray, x: int, y: int, horizontal: bool) -> int:
 	if not is_valid_edge(Vector2i(x, y), horizontal):
 		return Piece.NONE
 	return arr[x + y * _stride]
+
+
+## True if a wall on this edge would cut through a placed object.
+func _is_blocked(corner: Vector2i, horizontal: bool, floor_index: int) -> bool:
+	return placed_objects != null and placed_objects.is_edge_inside_object(corner, horizontal, floor_index)
 
 
 ## True if a horizontal wall or door touches a corner.

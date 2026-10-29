@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 GameClock="*res://scripts/core/game_clock.gd"
 BuildGrid="*res://scripts/building/build_grid.gd"
+ObjectCatalog="*res://scripts/objects/object_catalog.gd"
 
 [display]
 
