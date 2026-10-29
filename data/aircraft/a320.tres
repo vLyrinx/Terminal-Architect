@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="AircraftTypeDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="AircraftTypeDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/aircraft/aircraft_type_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://models/aircraft/a320.tscn" id="2_model"]
 
 [resource]
 script = ExtResource("1_def")
@@ -17,3 +18,4 @@ engine_count = 2
 engine_type = "jet"
 runway_length_needed = 2100
 turnaround_minutes = 40
+model_scene = ExtResource("2_model")
