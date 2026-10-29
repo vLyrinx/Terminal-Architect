@@ -1,5 +1,5 @@
 extends Label
-## Temporary on-screen readout for the game clock (checklist step 3).
+## Temporary on-screen readout for the game clock (checklist steps 3 and 4).
 ## Will be replaced by the top bar in step 15.
 
 
@@ -10,14 +10,16 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	text = "%s\n%s\nDay %d   Speed %sx\nTicks: %d (%d per second)" % [
+	var speed_text := "PAUSED" if GameClock.paused else "Speed %dx" % int(GameClock.speed)
+	text = "%s\n%s\nDay %d   %s\nTicks: %d (%d per second)" % [
 		GameClock.get_date_string(),
 		GameClock.get_time_string(),
 		GameClock.get_day_number(),
-		str(GameClock.speed),
+		speed_text,
 		GameClock.tick_count,
 		GameClock.ticks_last_second,
 	]
+	modulate = Color(1, 0.85, 0.4) if GameClock.paused else Color.WHITE
 
 
 func _on_hour_passed(hour: int) -> void:

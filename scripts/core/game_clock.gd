@@ -18,6 +18,8 @@ signal minute_passed(minute_of_day: int)
 signal hour_passed(hour: int)
 ## Emitted each time the in-game clock crosses midnight into a new day.
 signal day_passed(datetime: Dictionary)
+## Emitted when the speed or pause state changes.
+signal speed_changed(speed: float, paused: bool)
 
 ## In-game seconds covered by one simulation tick.
 const TICK_GAME_SECONDS := 5.0
@@ -30,11 +32,24 @@ const MAX_TICKS_PER_FRAME := 200
 
 const START_DATETIME := {"year": 2027, "month": 1, "day": 1, "hour": 6, "minute": 0, "second": 0}
 const WEEKDAY_NAMES := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+## Speeds the player can pick, in order. Keys 1, 2 and 3 select them.
+const SPEED_STEPS: Array[float] = [1.0, 2.0, 4.0]
+## Input actions created at startup (rebindable later from a settings menu).
+const ACTION_TOGGLE_PAUSE := "game_toggle_pause"
+const ACTION_SPEEDS := ["game_speed_1", "game_speed_2", "game_speed_3"]
+const DEFAULT_KEYS := {
+	"game_toggle_pause": KEY_SPACE,
+	"game_speed_1": KEY_1,
+	"game_speed_2": KEY_2,
+	"game_speed_3": KEY_3,
+}
+
 const MONTH_NAMES := ["January", "February", "March", "April", "May", "June", "July",
 	"August", "September", "October", "November", "December"]
 
-## Speed multiplier (1 = normal). Speed controls come in checklist step 4.
+## Current speed multiplier (1, 2 or 4). Change it with set_speed().
 var speed := 1.0
+## True while the clock is paused. Change it with set_paused() or toggle_pause().
 var paused := false
 
 ## Current in-game time as seconds since the Unix epoch (whole tick steps only).
@@ -53,6 +68,52 @@ func _ready() -> void:
 	# Keep running even if the scene tree is paused, so menus can pause other things.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	game_time = Time.get_unix_time_from_datetime_dict(START_DATETIME)
+	_register_input_actions()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(ACTION_TOGGLE_PAUSE):
+		toggle_pause()
+		get_viewport().set_input_as_handled()
+		return
+	for i in ACTION_SPEEDS.size():
+		if event.is_action_pressed(ACTION_SPEEDS[i]):
+			set_speed(SPEED_STEPS[i])
+			get_viewport().set_input_as_handled()
+			return
+
+
+# --- Speed control ----------------------------------------------------------
+
+## Sets the speed multiplier and unpauses the clock.
+func set_speed(new_speed: float) -> void:
+	new_speed = maxf(new_speed, 0.0)
+	if is_equal_approx(new_speed, speed) and not paused:
+		return
+	speed = new_speed
+	paused = false
+	speed_changed.emit(speed, paused)
+
+
+func set_paused(value: bool) -> void:
+	if value == paused:
+		return
+	paused = value
+	speed_changed.emit(speed, paused)
+
+
+func toggle_pause() -> void:
+	set_paused(not paused)
+
+
+func _register_input_actions() -> void:
+	for action: String in DEFAULT_KEYS:
+		if InputMap.has_action(action):
+			continue
+		InputMap.add_action(action)
+		var key := InputEventKey.new()
+		key.physical_keycode = DEFAULT_KEYS[action]
+		InputMap.action_add_event(action, key)
 
 
 func _process(delta: float) -> void:

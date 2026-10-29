@@ -1,6 +1,7 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
+[ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -55,3 +56,10 @@ offset_right = 416.0
 offset_bottom = 136.0
 label_settings = SubResource("ClockLabelSettings")
 script = ExtResource("1_clock")
+
+[node name="SpeedControls" type="HBoxContainer" parent="DebugUI"]
+offset_left = 16.0
+offset_top = 144.0
+offset_right = 316.0
+offset_bottom = 180.0
+script = ExtResource("2_speed")
