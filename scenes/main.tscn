@@ -1,3 +1,57 @@
-[gd_scene format=3]
+[gd_scene load_steps=8 format=3]
 
-[node name="root" type="Node3D" unique_id=1058329430]
+[ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.435, 0.659, 0.863, 1)
+sky_horizon_color = Color(0.851, 0.91, 0.961, 1)
+ground_horizon_color = Color(0.851, 0.91, 0.961, 1)
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+tonemap_mode = 2
+
+[sub_resource type="PlaneMesh" id="GroundMesh"]
+size = Vector2(400, 400)
+
+[sub_resource type="StandardMaterial3D" id="GroundMat"]
+albedo_color = Color(0.612, 0.773, 0.541, 1)
+roughness = 1.0
+
+[sub_resource type="LabelSettings" id="ClockLabelSettings"]
+font_size = 20
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.7)
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.383022, 0.321394, 0, 0.642788, 0.766044, -0.5, -0.663414, 0.556670, 0, 50, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("GroundMesh")
+surface_material_override/0 = SubResource("GroundMat")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 60, 60)
+far = 1000.0
+
+[node name="DebugUI" type="CanvasLayer" parent="."]
+
+[node name="ClockLabel" type="Label" parent="DebugUI"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 416.0
+offset_bottom = 136.0
+label_settings = SubResource("ClockLabelSettings")
+script = ExtResource("1_clock")
