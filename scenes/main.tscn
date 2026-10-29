@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://scripts/core/command_runner.gd" id="18_commands"]
 [ext_resource type="Script" path="res://scripts/building/tools/object_tool.gd" id="19_objecttool"]
 [ext_resource type="Script" path="res://scripts/building/tools/edit_tool.gd" id="20_edittool"]
+[ext_resource type="Script" path="res://scripts/camera/cutaway.gd" id="21_cutaway"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -57,9 +58,10 @@ script = ExtResource("5_ground")
 script = ExtResource("10_floor")
 placed_objects = NodePath("../PlacedObjects")
 
-[node name="TerminalWalls" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects")]
+[node name="TerminalWalls" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor")]
 script = ExtResource("12_walls")
 placed_objects = NodePath("../PlacedObjects")
+terminal_floor = NodePath("../TerminalFloor")
 
 [node name="PlacedObjects" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "terminal_walls")]
 script = ExtResource("17_objects")
@@ -85,6 +87,12 @@ near = 0.1
 far = 1000.0
 script = ExtResource("3_camera")
 
+[node name="Cutaway" type="Node" parent="." node_paths=PackedStringArray("camera", "terminal_floor", "terminal_walls")]
+script = ExtResource("21_cutaway")
+camera = NodePath("../Camera3D")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+
 [node name="ScaleMarkers" type="Node3D" parent="."]
 script = ExtResource("4_markers")
 
@@ -100,7 +108,7 @@ terminal_floor = NodePath("../../TerminalFloor")
 [node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
 script = ExtResource("13_walltool")
 tool_name = "Walls"
-shortcut = 86
+shortcut = 76
 terminal_walls = NodePath("../../TerminalWalls")
 
 [node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]

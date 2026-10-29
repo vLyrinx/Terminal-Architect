@@ -8,6 +8,10 @@ extends Node3D
 ## Inside a chunk, filled tiles are merged into as few rectangles as possible
 ## (greedy meshing), so even a big hall is only a handful of triangles.
 ##
+## The same rectangles also make the terminal roof (checklist step 13): a flat
+## slab on top of the walls over every floor tile, in its own chunk meshes so
+## the cutaway can hide it.
+##
 ## Keep this node at the world origin: meshes are built in world coordinates.
 
 ## Emitted after tiles change. rect is the area that was edited, in tiles.
@@ -15,10 +19,16 @@ signal floor_changed(rect: Rect2i, floor_index: int)
 
 const FLOOR_SHADER := preload("res://materials/terminal_floor.gdshader")
 const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
+const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 ## Chunk size in tiles. Bigger chunks mean fewer draw calls, smaller ones cheaper rebuilds.
 const CHUNK_TILES := 32
 ## Thickness of the floor slab in metres. Things standing on the floor sit this high.
 const THICKNESS := 0.1
+## The roof sits on top of the walls.
+const ROOF_BOTTOM := TerminalWallsScript.HEIGHT
+const ROOF_THICKNESS := 0.2
+const ROOF_TOP_COLOR := Color(0.8, 0.82, 0.85)
+const ROOF_SIDE_COLOR := Color(0.66, 0.69, 0.73)
 
 ## Optional PlacedObjects node (placed_objects.gd): floor under objects can't be removed.
 @export var placed_objects: Node3D
@@ -31,11 +41,32 @@ var _material: ShaderMaterial
 ## Reused by every chunk rebuild.
 var _mesh := MeshBuilderScript.new()
 
+## Whether roofs are drawn (the cutaway hides them).
+var roof_visible := true
+## Vector3i(chunk x, chunk y, floor index) -> MeshInstance3D
+var _roof_chunks := {}
+var _roof_material: StandardMaterial3D
+var _roof_mesh := MeshBuilderScript.new()
+## Holds the roof chunks, so hiding roofs is one visibility change.
+var _roofs: Node3D
+
 
 func _ready() -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = FLOOR_SHADER
 	_material.set_shader_parameter("tile_size", BuildGrid.TILE_SIZE)
+	_roof_material = StandardMaterial3D.new()
+	_roof_material.vertex_color_use_as_albedo = true
+	_roof_material.vertex_color_is_srgb = true
+	_roof_material.roughness = 0.9
+	_roofs = Node3D.new()
+	_roofs.name = "Roofs"
+	add_child(_roofs)
+
+
+func set_roof_visible(value: bool) -> void:
+	roof_visible = value
+	_roofs.visible = value
 
 
 # --- Queries --------------------------------------------------------------------
@@ -143,6 +174,7 @@ func _rebuild_chunk(key: Vector3i) -> void:
 	var h := mini(CHUNK_TILES, BuildGrid.PLOT_TILES.y - y0)
 	var tiles: PackedByteArray = _tiles[key.z]
 	_mesh.clear()
+	_roof_mesh.clear()
 
 	# Top faces: greedy merge. 1 = floor not yet covered by a rectangle, 2 = covered.
 	var mask := PackedByteArray()
@@ -172,6 +204,7 @@ func _rebuild_chunk(key: Vector3i) -> void:
 				for i in rw:
 					mask[lx + i + (ly + j) * w] = 2
 			_add_top(Vector2i(x0 + lx, y0 + ly), Vector2i(rw, rh), key.z)
+			_add_roof(Vector2i(x0 + lx, y0 + ly), Vector2i(rw, rh), key.z)
 			lx += rw
 
 	# Slab sides: only where floor meets no floor, merged into runs along each edge.
@@ -187,6 +220,7 @@ func _rebuild_chunk(key: Vector3i) -> void:
 				elif not exposed and run_start >= 0:
 					var edge_z := y + (1 if side > 0 else 0)
 					_add_side(Vector2i(run_start, edge_z), Vector2i(x, edge_z), Vector3(0, 0, side), key.z)
+					_add_roof_rim(tiles, run_start, x, y, side, true, key.z)
 					run_start = -1
 	for lx in w:
 		var x := x0 + lx
@@ -200,6 +234,7 @@ func _rebuild_chunk(key: Vector3i) -> void:
 				elif not exposed and run_start >= 0:
 					var edge_x := x + (1 if side > 0 else 0)
 					_add_side(Vector2i(edge_x, run_start), Vector2i(edge_x, y), Vector3(side, 0, 0), key.z)
+					_add_roof_rim(tiles, run_start, y, x, side, false, key.z)
 					run_start = -1
 
 	_apply_chunk_mesh(key)
@@ -223,17 +258,73 @@ func _add_side(from: Vector2i, to: Vector2i, normal: Vector3, floor_index: int) 
 	_mesh.add_quad([a, b, b + lift, a + lift], normal, Color.BLACK)
 
 
+## Roof slab over a rectangle of tiles starting at tile `from`.
+func _add_roof(from: Vector2i, size: Vector2i, floor_index: int) -> void:
+	var lo := BuildGrid.tile_corner_to_world(from, floor_index) + Vector3.UP * ROOF_BOTTOM
+	var hi := BuildGrid.tile_corner_to_world(from + size, floor_index) + Vector3.UP * (ROOF_BOTTOM + ROOF_THICKNESS)
+	_roof_mesh.add_box(lo, hi, ROOF_SIDE_COLOR, ROOF_TOP_COLOR, true)
+
+
+## Roof overhang along an outside edge of the floor, half a wall thick, so the
+## roof reaches the outer face of the walls standing on that edge. The edge runs
+## from tile `from` to `to` (exclusive) along row or column `line`, on the `side`
+## (-1 or 1) where there is no floor. Horizontal rims run on over outer corners
+## and stop short at inner corners; vertical rims stop at the corner line. That
+## way every corner square is covered by exactly one rim, so no faces overlap.
+func _add_roof_rim(tiles: PackedByteArray, from: int, to: int, line: int, side: int, horizontal: bool,
+		floor_index: int) -> void:
+	var t := BuildGrid.TILE_SIZE
+	var half := TerminalWallsScript.HALF
+	var start := float(from) * t
+	var end := float(to) * t
+	if horizontal:
+		start -= _rim_extension(tiles, from - 1, line, side)
+		end += _rim_extension(tiles, to, line, side)
+	var edge := float(line + (1 if side > 0 else 0)) * t
+	var across_lo := edge if side > 0 else edge - half
+	var o := BuildGrid.origin
+	var y_lo := BuildGrid.get_floor_height(floor_index) + ROOF_BOTTOM
+	var y_hi := y_lo + ROOF_THICKNESS
+	var lo: Vector3
+	var hi: Vector3
+	if horizontal:
+		lo = Vector3(o.x + start, y_lo, o.z + across_lo)
+		hi = Vector3(o.x + end, y_hi, o.z + across_lo + half)
+	else:
+		lo = Vector3(o.x + across_lo, y_lo, o.z + start)
+		hi = Vector3(o.x + across_lo + half, y_hi, o.z + end)
+	_roof_mesh.add_box(lo, hi, ROOF_SIDE_COLOR, ROOF_TOP_COLOR, true)
+
+
+## How far a horizontal rim reaches past its end, where the next tile along the
+## row is (x, y): over an outer corner it covers the corner square (+half), at an
+## inner corner it stops short of the vertical rim there (-half), and where the
+## edge simply carries on into the next chunk it stays put (0).
+func _rim_extension(tiles: PackedByteArray, x: int, y: int, side: int) -> float:
+	if not _is_filled(tiles, x, y):
+		return TerminalWallsScript.HALF
+	if _is_filled(tiles, x, y + side):
+		return -TerminalWallsScript.HALF
+	return 0.0
+
+
 func _apply_chunk_mesh(key: Vector3i) -> void:
-	var mi: MeshInstance3D = _chunks.get(key)
-	if _mesh.is_empty():
+	_apply_mesh(_chunks, key, _mesh, _material, self, "Chunk")
+	_apply_mesh(_roof_chunks, key, _roof_mesh, _roof_material, _roofs, "Roof")
+
+
+func _apply_mesh(chunks: Dictionary, key: Vector3i, builder: RefCounted, material: Material,
+		parent: Node3D, prefix: String) -> void:
+	var mi: MeshInstance3D = chunks.get(key)
+	if builder.is_empty():
 		if mi:
 			mi.queue_free()
-			_chunks.erase(key)
+			chunks.erase(key)
 		return
 	if mi == null:
 		mi = MeshInstance3D.new()
-		mi.name = "Chunk_%d_%d_%d" % [key.x, key.y, key.z]
-		mi.material_override = _material
-		add_child(mi)
-		_chunks[key] = mi
-	mi.mesh = _mesh.commit()
+		mi.name = "%s_%d_%d_%d" % [prefix, key.x, key.y, key.z]
+		mi.material_override = material
+		parent.add_child(mi)
+		chunks[key] = mi
+	mi.mesh = builder.commit()

@@ -14,6 +14,10 @@ extends Node3D
 ## the corner square, and vertical walls stop against their side. Free wall
 ## ends reach half a wall thickness past the corner so they look finished.
 ##
+## Cutaway (checklist step 13): every wall piece records whether the tiles on
+## each side have terminal floor. The wall shader uses that to lower walls that
+## stand between the camera and the inside to CUT_HEIGHT (set_cutaway()).
+##
 ## Keep this node at the world origin: meshes are built in world coordinates.
 
 ## Emitted after edges change, with the corner range that was edited.
@@ -22,6 +26,7 @@ signal walls_changed(from_corner: Vector2i, to_corner: Vector2i, floor_index: in
 enum Piece { NONE, WALL, DOOR }
 
 const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
+const WALL_SHADER := preload("res://materials/terminal_walls.gdshader")
 const CHUNK_TILES := 32
 const HEIGHT := 3.2
 const THICKNESS := 0.2
@@ -32,6 +37,8 @@ const DOOR_HEIGHT := 2.3
 ## Keep it at most TILE_SIZE - THICKNESS, so each jamb covers the corner square.
 const DOOR_WIDTH := 0.8
 const HALF := THICKNESS * 0.5
+## Height of walls lowered by the cutaway.
+const CUT_HEIGHT := 1.0
 
 const WALL_COLOR := Color(0.96, 0.96, 0.94)
 ## Wall tops are darker so wall lines read clearly from above.
@@ -41,22 +48,35 @@ const DOOR_TOP_COLOR := Color(0.36, 0.62, 0.92)
 
 ## Optional PlacedObjects node (placed_objects.gd): walls aren't built through objects.
 @export var placed_objects: Node3D
+## Optional TerminalFloor node (terminal_floor.gd): tells the cutaway which side is inside.
+@export var terminal_floor: Node3D
 
 ## Per floor index: [horizontal edges, vertical edges], one byte per corner.
 var _edges := {}
 ## Vector3i(chunk x, chunk y, floor index) -> MeshInstance3D
 var _chunks := {}
-var _material: StandardMaterial3D
+var _material: ShaderMaterial
 var _mesh := MeshBuilderScript.new()
 ## Row length of the edge arrays (one entry per corner across the plot).
 var _stride := BuildGrid.PLOT_TILES.x + 1
 
 
 func _ready() -> void:
-	_material = StandardMaterial3D.new()
-	_material.vertex_color_use_as_albedo = true
-	_material.vertex_color_is_srgb = true
-	_material.roughness = 0.9
+	_material = ShaderMaterial.new()
+	_material.shader = WALL_SHADER
+	_material.set_shader_parameter("cut_height", CUT_HEIGHT)
+	_material.set_shader_parameter("floor_height", BuildGrid.FLOOR_HEIGHT)
+	_mesh.use_custom0 = true
+	if terminal_floor:
+		terminal_floor.floor_changed.connect(_on_floor_changed)
+
+
+## Turns the cutaway on or off. view_dir is the camera's look direction on the
+## ground as -1, 0 or 1 for world X and Z; walls are lowered when the tile beyond
+## them in that direction has floor (0 leaves walls along that axis standing).
+func set_cutaway(on: bool, view_dir: Vector2) -> void:
+	_material.set_shader_parameter("cutaway", 1.0 if on else 0.0)
+	_material.set_shader_parameter("view_dir", view_dir)
 
 
 # --- Queries --------------------------------------------------------------------
@@ -263,26 +283,28 @@ func _add_run(arr: PackedByteArray, start: Vector2i, count: int, horizontal: boo
 	var t := BuildGrid.TILE_SIZE
 	var jamb := (t - DOOR_WIDTH) * 0.5
 	var along := start.x if horizontal else start.y
-	# Pieces as [from, to, is_wall] in metres along the run. A doorway is a jamb,
-	# the opening (lintel only) and another jamb.
+	# Pieces as [from, to, is_wall, sides] in metres along the run. A doorway is a
+	# jamb, the opening (lintel only) and another jamb. sides says which side of
+	# the wall has floor, for the cutaway.
 	var pieces := []
 	for i in count:
 		var corner := start + (Vector2i(i, 0) if horizontal else Vector2i(0, i))
 		var a := (along + i) * t
 		var b := a + t
+		var sides := _floor_sides(corner, horizontal, floor_index)
 		if _piece(arr, corner.x, corner.y, horizontal) == Piece.DOOR:
-			pieces.append([a, a + jamb, true])
-			pieces.append([a + jamb, b - jamb, false])
-			pieces.append([b - jamb, b, true])
+			pieces.append([a, a + jamb, true, sides])
+			pieces.append([a + jamb, b - jamb, false, sides])
+			pieces.append([b - jamb, b, true, sides])
 		else:
-			pieces.append([a, b, true])
+			pieces.append([a, b, true, sides])
 	# Extensions are full height even beside a doorway, so corners never have holes.
 	if start_adjust < 0.0:
-		pieces.push_front([pieces[0][0] + start_adjust, pieces[0][0], true])
+		pieces.push_front([pieces[0][0] + start_adjust, pieces[0][0], true, pieces[0][3]])
 	else:
 		pieces[0][0] += start_adjust
 	if end_adjust > 0.0:
-		pieces.append([pieces[-1][1], pieces[-1][1] + end_adjust, true])
+		pieces.append([pieces[-1][1], pieces[-1][1] + end_adjust, true, pieces[-1][3]])
 	else:
 		pieces[-1][1] += end_adjust
 
@@ -290,7 +312,7 @@ func _add_run(arr: PackedByteArray, start: Vector2i, count: int, horizontal: boo
 	for piece: Array in pieces:
 		if piece[1] - piece[0] < 0.001:
 			continue  # a jamb fully hidden where a vertical wall stops against a horizontal one
-		if not merged.is_empty() and merged[-1][2] == piece[2]:
+		if not merged.is_empty() and merged[-1][2] == piece[2] and merged[-1][3] == piece[3]:
 			merged[-1][1] = piece[1]
 		else:
 			merged.append(piece)
@@ -310,10 +332,35 @@ func _add_run(arr: PackedByteArray, start: Vector2i, count: int, horizontal: boo
 		else:
 			lo = Vector3(o.x + across - HALF, y_lo, o.z + piece[0])
 			hi = Vector3(o.x + across + HALF, y_hi, o.z + piece[1])
+		var sides: Vector2i = piece[3]
+		var custom := Color(0.0 if horizontal else 1.0, sides.x, sides.y, 0.0 if is_wall else 1.0)
 		if is_wall:
-			_mesh.add_box(lo, hi, WALL_COLOR, TOP_COLOR)
+			_mesh.add_box(lo, hi, WALL_COLOR, TOP_COLOR, false, custom)
 		else:
-			_mesh.add_box(lo, hi, WALL_COLOR, DOOR_TOP_COLOR, true)
+			_mesh.add_box(lo, hi, WALL_COLOR, DOOR_TOP_COLOR, true, custom)
+
+
+## Which sides of an edge have terminal floor: x = the +Z (or +X) side, y = the
+## -Z (or -X) side, each 1 or 0.
+func _floor_sides(corner: Vector2i, horizontal: bool, floor_index: int) -> Vector2i:
+	if terminal_floor == null:
+		return Vector2i.ZERO
+	var minus := corner - (Vector2i(0, 1) if horizontal else Vector2i(1, 0))
+	return Vector2i(1 if terminal_floor.has_floor(corner, floor_index) else 0,
+		1 if terminal_floor.has_floor(minus, floor_index) else 0)
+
+
+## Floor laid or removed: walls along it may now face inside or outside.
+func _on_floor_changed(rect: Rect2i, floor_index: int) -> void:
+	if not _edges.has(floor_index):
+		return
+	@warning_ignore("integer_division")
+	var first := Vector2i(maxi(rect.position.x - 1, 0) / CHUNK_TILES, maxi(rect.position.y - 1, 0) / CHUNK_TILES)
+	@warning_ignore("integer_division")
+	var last := Vector2i((rect.end.x + 1) / CHUNK_TILES, (rect.end.y + 1) / CHUNK_TILES)
+	for cy in range(first.y, last.y + 1):
+		for cx in range(first.x, last.x + 1):
+			_rebuild_chunk(Vector3i(cx, cy, floor_index))
 
 
 func _apply_chunk_mesh(key: Vector3i) -> void:

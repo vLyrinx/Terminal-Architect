@@ -5,7 +5,7 @@ extends "res://scripts/building/build_tool.gd"
 ##   Shift + left click   turn a doorway back into wall
 ## The ghost sits on the tile edge nearest the mouse: green over a wall piece,
 ## red where there is no wall. With Shift held it shows red over doorways only.
-## The mouse is read at half wall height, so pointing at a wall's side picks it.
+## The mouse is read just below the cutaway wall height, so pointing at a wall's side picks it.
 
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 const GHOST_GROW := 0.08
@@ -29,8 +29,9 @@ func _process(_delta: float) -> void:
 	if not is_active():
 		return
 	_removing = Input.is_physical_key_pressed(KEY_SHIFT)
-	# Pick at half wall height, so pointing at the side of a wall finds that wall.
-	var pick := mouse_pick(TerminalWallsScript.HEIGHT * 0.5)
+	# Pick a little below the cutaway height, so pointing at the side of a wall
+	# finds that wall whether it is lowered or not.
+	var pick := mouse_pick(TerminalWallsScript.CUT_HEIGHT * 0.8)
 	_has_edge = false
 	if pick.hit:
 		_edge = BuildGrid.world_to_edge(pick.position)
