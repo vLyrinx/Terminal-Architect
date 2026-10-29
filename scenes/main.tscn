@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://scripts/debug/build_bar_debug.gd" id="9_buildbar"]
 [ext_resource type="Script" path="res://scripts/building/terminal_floor.gd" id="10_floor"]
 [ext_resource type="Script" path="res://scripts/building/tools/floor_tool.gd" id="11_floortool"]
+[ext_resource type="Script" path="res://scripts/building/terminal_walls.gd" id="12_walls"]
+[ext_resource type="Script" path="res://scripts/building/tools/wall_tool.gd" id="13_walltool"]
+[ext_resource type="Script" path="res://scripts/building/tools/door_tool.gd" id="14_doortool"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -47,6 +50,9 @@ script = ExtResource("5_ground")
 [node name="TerminalFloor" type="Node3D" parent="."]
 script = ExtResource("10_floor")
 
+[node name="TerminalWalls" type="Node3D" parent="."]
+script = ExtResource("12_walls")
+
 [node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label", "terminal_floor")]
 script = ExtResource("6_highlight")
 debug_label = NodePath("../DebugUI/TileLabel")
@@ -69,6 +75,18 @@ script = ExtResource("11_floortool")
 tool_name = "Floor"
 shortcut = 70
 terminal_floor = NodePath("../../TerminalFloor")
+
+[node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
+script = ExtResource("13_walltool")
+tool_name = "Walls"
+shortcut = 86
+terminal_walls = NodePath("../../TerminalWalls")
+
+[node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
+script = ExtResource("14_doortool")
+tool_name = "Doors"
+shortcut = 78
+terminal_walls = NodePath("../../TerminalWalls")
 
 [node name="TestCubeTool" type="Node3D" parent="Building"]
 script = ExtResource("8_cube")

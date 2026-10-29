@@ -86,6 +86,22 @@ func make_ghost(ghost_mesh: Mesh) -> MeshInstance3D:
 	return mi
 
 
+## Where the mouse points on the build floor, for tools that snap to corners or
+## edges rather than tiles (the manager only reports tile changes). Same result
+## as BuildGrid.screen_to_tile(); "hit" is false over the UI.
+func mouse_pick(height_offset := 0.0) -> Dictionary:
+	var viewport := get_viewport()
+	if viewport.gui_get_hovered_control() != null:
+		return {"hit": false, "tile": Vector2i.ZERO, "position": Vector3.ZERO, "in_plot": false}
+	return BuildGrid.screen_to_tile(viewport.get_camera_3d(), viewport.get_mouse_position(),
+		get_floor(), height_offset)
+
+
+## True while this tool is the active one.
+func is_active() -> bool:
+	return manager != null and manager.active_tool == self
+
+
 ## Floor the manager is building on.
 func get_floor() -> int:
 	return manager.floor_index if manager else 0

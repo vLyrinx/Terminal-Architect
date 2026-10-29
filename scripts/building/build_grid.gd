@@ -69,6 +69,39 @@ func world_to_tile(world_pos: Vector3) -> Vector2i:
 		floori((world_pos.z - origin.z) / TILE_SIZE))
 
 
+## Nearest grid line crossing to a world position, as a corner index.
+## Corner (x, y) is the corner of tile (x, y) with the lowest X and Z, so
+## corners run from 0 to PLOT_TILES inclusive. May be outside the plot.
+func world_to_corner(world_pos: Vector3) -> Vector2i:
+	return Vector2i(
+		roundi((world_pos.x - origin.x) / TILE_SIZE),
+		roundi((world_pos.z - origin.z) / TILE_SIZE))
+
+
+func clamp_corner_to_plot(corner: Vector2i) -> Vector2i:
+	return Vector2i(clampi(corner.x, 0, PLOT_TILES.x), clampi(corner.y, 0, PLOT_TILES.y))
+
+
+## Nearest tile edge to a world position: {"corner": Vector2i, "horizontal": bool}.
+## A horizontal edge runs along X from corner (x, y) to (x + 1, y); a vertical
+## edge runs along Z from corner (x, y) to (x, y + 1). May be outside the plot.
+func world_to_edge(world_pos: Vector3) -> Dictionary:
+	var local := Vector2(world_pos.x - origin.x, world_pos.z - origin.z) / TILE_SIZE
+	var tile := Vector2i(floori(local.x), floori(local.y))
+	var f := local - Vector2(tile)
+	var options := [
+		[f.y, tile, true],
+		[1.0 - f.y, tile + Vector2i(0, 1), true],
+		[f.x, tile, false],
+		[1.0 - f.x, tile + Vector2i(1, 0), false],
+	]
+	var best: Array = options[0]
+	for option: Array in options:
+		if option[0] < best[0]:
+			best = option
+	return {"corner": best[1], "horizontal": best[2]}
+
+
 ## Floor index nearest to a world height.
 func world_to_floor(world_y: float) -> int:
 	return maxi(roundi((world_y - origin.y) / FLOOR_HEIGHT), 0)
@@ -123,13 +156,14 @@ func get_plot_rect() -> Rect2:
 ## Returns {"hit": bool, "tile": Vector2i, "position": Vector3, "in_plot": bool}.
 ## This is a ray-plane test, so it needs no physics colliders and stays cheap.
 ## Picking on top of objects will use physics raycasts once objects exist.
-func screen_to_tile(camera: Camera3D, screen_pos: Vector2, floor_index := 0) -> Dictionary:
+## height_offset raises the plane above the floor, e.g. to pick walls by their sides.
+func screen_to_tile(camera: Camera3D, screen_pos: Vector2, floor_index := 0, height_offset := 0.0) -> Dictionary:
 	var result := {"hit": false, "tile": Vector2i.ZERO, "position": Vector3.ZERO, "in_plot": false}
 	if camera == null:
 		return result
 	var ray_origin := camera.project_ray_origin(screen_pos)
 	var ray_dir := camera.project_ray_normal(screen_pos)
-	var plane := Plane(Vector3.UP, get_floor_height(floor_index))
+	var plane := Plane(Vector3.UP, get_floor_height(floor_index) + height_offset)
 	var hit: Variant = plane.intersects_ray(ray_origin, ray_dir)
 	if hit == null:
 		return result

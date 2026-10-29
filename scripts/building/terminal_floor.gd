@@ -14,6 +14,7 @@ extends Node3D
 signal floor_changed(rect: Rect2i, floor_index: int)
 
 const FLOOR_SHADER := preload("res://materials/terminal_floor.gdshader")
+const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
 ## Chunk size in tiles. Bigger chunks mean fewer draw calls, smaller ones cheaper rebuilds.
 const CHUNK_TILES := 32
 ## Thickness of the floor slab in metres. Things standing on the floor sit this high.
@@ -24,13 +25,8 @@ var _tiles := {}
 ## Vector3i(chunk x, chunk y, floor index) -> MeshInstance3D
 var _chunks := {}
 var _material: ShaderMaterial
-
-# Mesh buffers reused by every chunk rebuild. They are members so appending
-# changes them in place (a packed array held in two places is copied on write).
-var _verts := PackedVector3Array()
-var _normals := PackedVector3Array()
-var _colors := PackedColorArray()
-var _indices := PackedInt32Array()
+## Reused by every chunk rebuild.
+var _mesh := MeshBuilderScript.new()
 
 
 func _ready() -> void:
@@ -136,10 +132,7 @@ func _rebuild_chunk(key: Vector3i) -> void:
 	var w := mini(CHUNK_TILES, BuildGrid.PLOT_TILES.x - x0)
 	var h := mini(CHUNK_TILES, BuildGrid.PLOT_TILES.y - y0)
 	var tiles: PackedByteArray = _tiles[key.z]
-	_verts.clear()
-	_normals.clear()
-	_colors.clear()
-	_indices.clear()
+	_mesh.clear()
 
 	# Top faces: greedy merge. 1 = floor not yet covered by a rectangle, 2 = covered.
 	var mask := PackedByteArray()
@@ -209,7 +202,7 @@ func _add_top(from: Vector2i, size: Vector2i, floor_index: int) -> void:
 	var b := BuildGrid.tile_corner_to_world(from + Vector2i(size.x, 0), floor_index) + lift
 	var c := BuildGrid.tile_corner_to_world(from + size, floor_index) + lift
 	var d := BuildGrid.tile_corner_to_world(from + Vector2i(0, size.y), floor_index) + lift
-	_add_quad([a, b, c, d], Vector3.UP, Color.WHITE)
+	_mesh.add_quad([a, b, c, d], Vector3.UP, Color.WHITE)
 
 
 ## Vertical slab side between two grid corners, facing `normal`.
@@ -217,31 +210,12 @@ func _add_side(from: Vector2i, to: Vector2i, normal: Vector3, floor_index: int) 
 	var lift := Vector3.UP * THICKNESS
 	var a := BuildGrid.tile_corner_to_world(from, floor_index)
 	var b := BuildGrid.tile_corner_to_world(to, floor_index)
-	_add_quad([a, b, b + lift, a + lift], normal, Color.BLACK)
-
-
-## Adds a quad (corners in order around its edge), wound so it faces `normal`.
-func _add_quad(corners: Array, normal: Vector3, color: Color) -> void:
-	var start := _verts.size()
-	for corner: Vector3 in corners:
-		_verts.append(corner)
-		_normals.append(normal)
-		_colors.append(color)
-	# Godot draws clockwise triangles as front faces.
-	var a: Vector3 = corners[0]
-	var b: Vector3 = corners[1]
-	var c: Vector3 = corners[2]
-	var clockwise := (b - a).cross(c - a).dot(normal) < 0.0
-	if clockwise:
-		_indices.append_array([start, start + 1, start + 2, start, start + 2, start + 3])
-	else:
-		_indices.append_array([start, start + 2, start + 1, start, start + 3, start + 2])
+	_mesh.add_quad([a, b, b + lift, a + lift], normal, Color.BLACK)
 
 
 func _apply_chunk_mesh(key: Vector3i) -> void:
-	var empty := _verts.is_empty()
 	var mi: MeshInstance3D = _chunks.get(key)
-	if empty:
+	if _mesh.is_empty():
 		if mi:
 			mi.queue_free()
 			_chunks.erase(key)
@@ -252,12 +226,4 @@ func _apply_chunk_mesh(key: Vector3i) -> void:
 		mi.material_override = _material
 		add_child(mi)
 		_chunks[key] = mi
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = _verts
-	arrays[Mesh.ARRAY_NORMAL] = _normals
-	arrays[Mesh.ARRAY_COLOR] = _colors
-	arrays[Mesh.ARRAY_INDEX] = _indices
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mi.mesh = mesh
+	mi.mesh = _mesh.commit()
