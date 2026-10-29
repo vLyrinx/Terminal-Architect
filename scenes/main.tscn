@@ -1,9 +1,11 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
+[ext_resource type="Script" path="res://scripts/building/ground.gd" id="5_ground"]
+[ext_resource type="Script" path="res://scripts/building/tile_highlighter.gd" id="6_highlight"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -18,13 +20,6 @@ background_mode = 2
 sky = SubResource("Sky")
 ambient_light_source = 3
 tonemap_mode = 2
-
-[sub_resource type="PlaneMesh" id="GroundMesh"]
-size = Vector2(400, 400)
-
-[sub_resource type="StandardMaterial3D" id="GroundMat"]
-albedo_color = Color(0.612, 0.773, 0.541, 1)
-roughness = 1.0
 
 [sub_resource type="LabelSettings" id="ClockLabelSettings"]
 font_size = 20
@@ -42,8 +37,11 @@ light_energy = 1.2
 shadow_enabled = true
 
 [node name="Ground" type="MeshInstance3D" parent="."]
-mesh = SubResource("GroundMesh")
-surface_material_override/0 = SubResource("GroundMat")
+script = ExtResource("5_ground")
+
+[node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label")]
+script = ExtResource("6_highlight")
+debug_label = NodePath("../DebugUI/TileLabel")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 85, 85)
@@ -70,3 +68,11 @@ offset_top = 144.0
 offset_right = 316.0
 offset_bottom = 180.0
 script = ExtResource("2_speed")
+
+[node name="TileLabel" type="Label" parent="DebugUI"]
+offset_left = 16.0
+offset_top = 188.0
+offset_right = 316.0
+offset_bottom = 218.0
+label_settings = SubResource("ClockLabelSettings")
+text = "Tile: none"
