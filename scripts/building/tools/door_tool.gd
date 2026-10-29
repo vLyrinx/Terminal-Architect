@@ -65,6 +65,10 @@ func get_hint() -> String:
 		Money.format(Money.settings.door_cost)
 
 
+func get_cost_text() -> String:
+	return Money.format(Money.settings.door_cost)
+
+
 func _update_ghost() -> void:
 	var piece: int = terminal_walls.get_edge(_edge.corner, _edge.horizontal, get_floor()) if _has_edge \
 		else TerminalWallsScript.Piece.NONE

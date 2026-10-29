@@ -102,9 +102,43 @@ func release(_tile: Vector2i, _in_plot: bool) -> void:
 func get_hint() -> String:
 	if _defs.is_empty():
 		return "No objects in data/objects/"
-	var def: Resource = _defs[_def_index]
-	return "%s: %s (%s)   %d of %d   Click: place   R: rotate   Tab / Shift+Tab: change object   Esc: cancel" % [
-		def.category, def.display_name, Money.format(def.cost), _def_index + 1, _defs.size()]
+	return "Click: place   R: rotate   Tab / Shift+Tab: next object   Right click / Esc: cancel"
+
+
+## One build menu entry per object data file, each in its own menu_category.
+func get_menu_items() -> Array[Dictionary]:
+	var items: Array[Dictionary] = []
+	for def: Resource in ObjectCatalog.get_all():
+		if def.menu_category == "":
+			continue
+		var tooltip := "%s (%s, %d x %d tiles)" % [def.display_name, def.category, def.footprint.x, def.footprint.y]
+		items.append(make_menu_item("object:" + String(def.id), def.display_name, def.icon,
+			Money.format(def.cost), def.menu_category, tooltip))
+	return items
+
+
+func select_item(item_id: String) -> void:
+	if not item_id.begins_with("object:"):
+		return
+	_defs = ObjectCatalog.get_all()
+	var id := StringName(item_id.trim_prefix("object:"))
+	for i in _defs.size():
+		if _defs[i].id == id:
+			_def_index = i
+	if is_active():
+		_rebuild_ghost()
+
+
+func get_active_item_id() -> String:
+	return "object:" + String(_defs[_def_index].id) if not _defs.is_empty() else ""
+
+
+func get_title() -> String:
+	return _defs[_def_index].display_name if not _defs.is_empty() else tool_name
+
+
+func get_cost_text() -> String:
+	return Money.format(_defs[_def_index].cost) if not _defs.is_empty() else ""
 
 
 func _rebuild_ghost() -> void:

@@ -23,6 +23,7 @@ const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_co
 ## Ghost is a little bigger than the wall so it shows over existing walls.
 const GHOST_GROW := 0.06
 const MODE_NAMES := ["Line", "Room"]
+const ROOM_ICON := preload("res://ui/icons/room.svg")
 
 ## The TerminalWalls node (terminal_walls.gd).
 @export var terminal_walls: Node3D
@@ -120,8 +121,34 @@ func cancel_drag() -> void:
 
 func get_hint() -> String:
 	if mode == Mode.LINE:
-		return "Walls: Line mode (Tab: Room)   Drag along grid lines: build wall   Shift + drag: remove   Esc: cancel"
-	return "Walls: Room mode (Tab: Line)   Drag a rectangle: floor + walls   Shift + drag: remove walls   Esc: cancel"
+		return "Drag along grid lines: build wall   Shift + drag: remove   Tab: Room mode   Esc: cancel"
+	return "Drag a rectangle: floor + walls   Shift + drag: remove walls   Tab: Line mode   Esc: cancel"
+
+
+## Two build menu entries: Walls (Line mode) and Room.
+func get_menu_items() -> Array[Dictionary]:
+	var wall := Money.format(Money.settings.wall_cost)
+	return [
+		make_menu_item("walls_line", "Walls", icon, "%s / m" % wall, menu_category),
+		make_menu_item("walls_room", "Room", ROOM_ICON, "%s / m + floor" % wall, menu_category,
+			"Room: floor with walls all round"),
+	]
+
+
+func select_item(item_id: String) -> void:
+	mode = Mode.ROOM if item_id == "walls_room" else Mode.LINE
+
+
+func get_active_item_id() -> String:
+	return "walls_room" if mode == Mode.ROOM else "walls_line"
+
+
+func get_title() -> String:
+	return "Room" if mode == Mode.ROOM else "Walls"
+
+
+func get_cost_text() -> String:
+	return "%s / m" % Money.format(Money.settings.wall_cost)
 
 
 ## The command for the current drag: one run in Line mode; four sides and the

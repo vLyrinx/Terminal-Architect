@@ -15,6 +15,11 @@ const CATEGORIES := ["Terminal", "Check-in", "Security", "Seating", "Facilities"
 @export var id: StringName
 @export var display_name := ""
 @export_enum("Terminal", "Check-in", "Security", "Seating", "Facilities", "Gate", "Test") var category := "Terminal"
+## Build menu category (checklist step 15): an ID from build_categories.gd.
+## Empty keeps the object out of the menu (it can still be reached with Tab).
+@export var menu_category := "terminal"
+## Icon shown on the object's build menu button.
+@export var icon: Texture2D
 ## Construction cost, paid when placed (checklist step 14).
 @export var cost := 0
 ## Size in tiles: X along the model's local X, Y along its local Z.

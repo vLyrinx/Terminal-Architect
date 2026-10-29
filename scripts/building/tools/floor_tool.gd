@@ -105,6 +105,10 @@ func get_hint() -> String:
 	return "Drag: lay floor   Shift + drag: remove   Right click / Esc: cancel"
 
 
+func get_cost_text() -> String:
+	return "%s / tile" % Money.format(Money.settings.floor_tile_cost)
+
+
 func _update_ghost() -> void:
 	var shown := _dragging or _hover_in_plot
 	_ghost.visible = shown

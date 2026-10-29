@@ -75,6 +75,20 @@ func select_tool(tool: BuildToolScript) -> void:
 	print("BUILD | %s" % (active_tool.tool_name if active_tool else "no tool"))
 
 
+## Picks one build menu entry of a tool (checklist step 15), such as one
+## object type of the object tool, and makes that tool active.
+func select_item(tool: BuildToolScript, item_id: String) -> void:
+	if _dragging and tool == active_tool:
+		_dragging = false
+		active_tool.cancel_drag()
+	tool.select_item(item_id)
+	if tool == active_tool:
+		tool_changed.emit(tool)  # same tool, new entry: refresh the menu and hint
+		print("BUILD | %s" % tool.get_title())
+	else:
+		select_tool(tool)
+
+
 ## Picks the tool, or puts it away if it is already active.
 func toggle_tool(tool: BuildToolScript) -> void:
 	select_tool(null if tool == active_tool else tool)

@@ -1,14 +1,10 @@
-[gd_scene load_steps=29 format=3]
+[gd_scene load_steps=35 format=3]
 
-[ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
-[ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
 [ext_resource type="Script" path="res://scripts/building/ground.gd" id="5_ground"]
 [ext_resource type="Script" path="res://scripts/building/tile_highlighter.gd" id="6_highlight"]
 [ext_resource type="Script" path="res://scripts/building/build_manager.gd" id="7_build"]
-[ext_resource type="Script" path="res://scripts/building/tools/test_cube_tool.gd" id="8_cube"]
-[ext_resource type="Script" path="res://scripts/debug/build_bar_debug.gd" id="9_buildbar"]
 [ext_resource type="Script" path="res://scripts/building/terminal_floor.gd" id="10_floor"]
 [ext_resource type="Script" path="res://scripts/building/tools/floor_tool.gd" id="11_floortool"]
 [ext_resource type="Script" path="res://scripts/building/terminal_walls.gd" id="12_walls"]
@@ -21,8 +17,20 @@
 [ext_resource type="Script" path="res://scripts/building/tools/object_tool.gd" id="19_objecttool"]
 [ext_resource type="Script" path="res://scripts/building/tools/edit_tool.gd" id="20_edittool"]
 [ext_resource type="Script" path="res://scripts/camera/cutaway.gd" id="21_cutaway"]
-[ext_resource type="Script" path="res://scripts/debug/money_debug_label.gd" id="22_money"]
-[ext_resource type="Script" path="res://scripts/debug/message_toast.gd" id="23_toast"]
+[ext_resource type="Script" path="res://scripts/ui/message_toast.gd" id="23_toast"]
+[ext_resource type="Script" path="res://scripts/ui/game_ui.gd" id="24_gameui"]
+[ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="25_topbar"]
+[ext_resource type="Script" path="res://scripts/ui/build_menu.gd" id="26_buildmenu"]
+[ext_resource type="Script" path="res://scripts/ui/debug_overlay.gd" id="27_debug"]
+[ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
+[ext_resource type="Texture2D" path="res://ui/icons/floor.svg" id="30_icon_floor"]
+[ext_resource type="Texture2D" path="res://ui/icons/walls.svg" id="31_icon_walls"]
+[ext_resource type="Texture2D" path="res://ui/icons/doors.svg" id="32_icon_doors"]
+[ext_resource type="Texture2D" path="res://ui/icons/zone_landside.svg" id="33_icon_landside"]
+[ext_resource type="Texture2D" path="res://ui/icons/zone_security.svg" id="34_icon_security"]
+[ext_resource type="Texture2D" path="res://ui/icons/zone_airside.svg" id="35_icon_airside"]
+[ext_resource type="Texture2D" path="res://ui/icons/demolish.svg" id="36_icon_demolish"]
+[ext_resource type="Texture2D" path="res://ui/icons/select.svg" id="37_icon_select"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -37,11 +45,6 @@ background_mode = 2
 sky = SubResource("Sky")
 ambient_light_source = 3
 tonemap_mode = 2
-
-[sub_resource type="LabelSettings" id="ClockLabelSettings"]
-font_size = 20
-outline_size = 6
-outline_color = Color(0, 0, 0, 0.7)
 
 [node name="Main" type="Node3D"]
 
@@ -81,9 +84,8 @@ terminal_zones = NodePath("../TerminalZones")
 script = ExtResource("15_zones")
 terminal_floor = NodePath("../TerminalFloor")
 
-[node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label", "terminal_floor")]
+[node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("6_highlight")
-debug_label = NodePath("../DebugUI/TileLabel")
 terminal_floor = NodePath("../TerminalFloor")
 
 [node name="Camera3D" type="Camera3D" parent="."]
@@ -106,7 +108,9 @@ script = ExtResource("7_build")
 
 [node name="FloorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_floor", "command_runner")]
 script = ExtResource("11_floortool")
-tool_name = "Floor"
+tool_name = "Floor tiles"
+menu_category = "structures"
+icon = ExtResource("30_icon_floor")
 shortcut = 70
 terminal_floor = NodePath("../../TerminalFloor")
 command_runner = NodePath("../../Commands")
@@ -114,6 +118,8 @@ command_runner = NodePath("../../Commands")
 [node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "command_runner")]
 script = ExtResource("13_walltool")
 tool_name = "Walls"
+menu_category = "structures"
+icon = ExtResource("31_icon_walls")
 shortcut = 76
 terminal_walls = NodePath("../../TerminalWalls")
 command_runner = NodePath("../../Commands")
@@ -121,6 +127,8 @@ command_runner = NodePath("../../Commands")
 [node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "command_runner")]
 script = ExtResource("14_doortool")
 tool_name = "Doors"
+menu_category = "structures"
+icon = ExtResource("32_icon_doors")
 shortcut = 78
 terminal_walls = NodePath("../../TerminalWalls")
 command_runner = NodePath("../../Commands")
@@ -128,18 +136,24 @@ command_runner = NodePath("../../Commands")
 [node name="LandsideTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
 script = ExtResource("16_zonetool")
 tool_name = "Landside"
+menu_category = "zones"
+icon = ExtResource("33_icon_landside")
 zone = 1
 terminal_zones = NodePath("../../TerminalZones")
 
 [node name="SecurityTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
 script = ExtResource("16_zonetool")
 tool_name = "Security"
+menu_category = "zones"
+icon = ExtResource("34_icon_security")
 zone = 2
 terminal_zones = NodePath("../../TerminalZones")
 
 [node name="AirsideTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
 script = ExtResource("16_zonetool")
 tool_name = "Airside"
+menu_category = "zones"
+icon = ExtResource("35_icon_airside")
 zone = 3
 terminal_zones = NodePath("../../TerminalZones")
 
@@ -150,73 +164,71 @@ shortcut = 79
 placed_objects = NodePath("../../PlacedObjects")
 command_runner = NodePath("../../Commands")
 
+[node name="DemolishTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "command_runner")]
+script = ExtResource("28_demolish")
+tool_name = "Demolish"
+menu_category = "demolish"
+icon = ExtResource("36_icon_demolish")
+placed_objects = NodePath("../../PlacedObjects")
+terminal_floor = NodePath("../../TerminalFloor")
+terminal_walls = NodePath("../../TerminalWalls")
+command_runner = NodePath("../../Commands")
+
 [node name="EditTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "command_runner")]
 script = ExtResource("20_edittool")
-tool_name = "Edit"
+tool_name = "Select objects"
+menu_category = "demolish"
+icon = ExtResource("37_icon_select")
 shortcut = 88
 placed_objects = NodePath("../../PlacedObjects")
 command_runner = NodePath("../../Commands")
 
-[node name="TestCubeTool" type="Node3D" parent="Building"]
-script = ExtResource("8_cube")
-tool_name = "Test cube"
-shortcut = 66
+[node name="UI" type="CanvasLayer" parent="."]
 
-[node name="DebugUI" type="CanvasLayer" parent="."]
-
-[node name="ClockLabel" type="Label" parent="DebugUI"]
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 416.0
-offset_bottom = 136.0
-label_settings = SubResource("ClockLabelSettings")
-script = ExtResource("1_clock")
-
-[node name="SpeedControls" type="HBoxContainer" parent="DebugUI"]
-offset_left = 16.0
-offset_top = 144.0
-offset_right = 316.0
-offset_bottom = 180.0
-script = ExtResource("2_speed")
-
-[node name="TileLabel" type="Label" parent="DebugUI"]
-offset_left = 16.0
-offset_top = 188.0
-offset_right = 316.0
-offset_bottom = 218.0
-label_settings = SubResource("ClockLabelSettings")
-text = "Tile: none"
-
-[node name="MoneyLabel" type="VBoxContainer" parent="DebugUI"]
-anchors_preset = 1
-anchor_left = 1.0
+[node name="Root" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
-offset_left = -316.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 80.0
-grow_horizontal = 0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("22_money")
+script = ExtResource("24_gameui")
 
-[node name="MessageToast" type="PanelContainer" parent="DebugUI" node_paths=PackedStringArray("command_runner")]
-offset_top = 72.0
+[node name="BuildMenu" type="Control" parent="UI/Root" node_paths=PackedStringArray("build_manager")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("26_buildmenu")
+build_manager = NodePath("../../../Building")
+
+[node name="TopBar" type="PanelContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+script = ExtResource("25_topbar")
+
+[node name="DebugOverlay" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("tile_highlighter")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 48.0
+offset_right = 48.0
+offset_bottom = 88.0
+mouse_filter = 2
+script = ExtResource("27_debug")
+tile_highlighter = NodePath("../../../TileHighlight")
+
+[node name="MessageToast" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("command_runner")]
+layout_mode = 0
+offset_top = 48.0
 offset_right = 40.0
-offset_bottom = 112.0
+offset_bottom = 88.0
 mouse_filter = 2
 script = ExtResource("23_toast")
-command_runner = NodePath("../../Commands")
-
-[node name="BuildBar" type="VBoxContainer" parent="DebugUI" node_paths=PackedStringArray("build_manager")]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -96.0
-offset_right = 616.0
-offset_bottom = -16.0
-grow_vertical = 0
-alignment = 2
-mouse_filter = 2
-script = ExtResource("9_buildbar")
-build_manager = NodePath("../../Building")
+command_runner = NodePath("../../../Commands")

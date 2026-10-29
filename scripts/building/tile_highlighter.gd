@@ -9,8 +9,6 @@ const HIGHLIGHT_SHADER := preload("res://materials/tile_highlight.gdshader")
 ## Height above the floor, so the highlight doesn't flicker into the ground.
 const LIFT := 0.02
 
-## Optional label that shows the hovered tile (temporary debug readout).
-@export var debug_label: Label
 ## Floor being pointed at (only floor 0 for now).
 @export var floor_index := 0
 ## Optional TerminalFloor node (terminal_floor.gd), so the highlight sits on top of floor tiles.
@@ -49,5 +47,3 @@ func _process(_delta: float) -> void:
 		hovered_tile = tile
 		has_hovered_tile = valid
 		hovered_tile_changed.emit(tile, valid)
-		if debug_label:
-			debug_label.text = "Tile %d, %d" % [tile.x, tile.y] if valid else "Tile: none"

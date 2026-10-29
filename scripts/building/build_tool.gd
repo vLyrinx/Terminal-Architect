@@ -14,6 +14,11 @@ extends Node3D
 @export var tool_name := "Tool"
 ## Key that selects this tool (KEY_NONE for no shortcut).
 @export var shortcut: Key = KEY_NONE
+## Build menu category (checklist step 15): an ID from build_categories.gd,
+## such as "structures" or "airside". Empty keeps the tool out of the menu.
+@export var menu_category := ""
+## Icon shown on the tool's build menu button.
+@export var icon: Texture2D
 
 ## Set by the BuildManager when the tool is registered (build_manager.gd).
 var manager: Node3D
@@ -60,6 +65,50 @@ func cancel_drag() -> void:
 ## Short help text for the build bar, such as "Left click: place".
 func get_hint() -> String:
 	return "Left click: build"
+
+
+# --- Build menu (checklist step 15) -------------------------------------------
+
+## Entries this tool adds to the build menu. Each is a Dictionary with
+## "id", "name", "icon", "cost" (display text), "category" and "tooltip".
+## Most tools add one entry from their exports; a tool with several variants
+## (objects, wall modes) overrides this and select_item().
+func get_menu_items() -> Array[Dictionary]:
+	var items: Array[Dictionary] = []
+	if menu_category != "":
+		items.append(make_menu_item(String(name), tool_name, icon, get_cost_text(), menu_category))
+	return items
+
+
+## Switches the tool to one of its menu entries (called before it is activated).
+func select_item(_item_id: String) -> void:
+	pass
+
+
+## The menu entry the tool is set to now, so the menu can highlight it.
+func get_active_item_id() -> String:
+	return String(name)
+
+
+## Price shown in the build menu, such as "$25 / tile" ("" for none).
+func get_cost_text() -> String:
+	return ""
+
+
+## Name of what is being built, shown above the hint.
+func get_title() -> String:
+	return tool_name
+
+
+func make_menu_item(id: String, item_name: String, item_icon: Texture2D, cost: String,
+		category: String, tooltip := "") -> Dictionary:
+	var key := OS.get_keycode_string(shortcut) if shortcut != KEY_NONE else ""
+	if tooltip == "":
+		tooltip = item_name
+	if key != "":
+		tooltip += "  (%s)" % key
+	return {"id": id, "name": item_name, "icon": item_icon, "cost": cost, "category": category,
+		"tooltip": tooltip, "tool": self}
 
 
 # --- Helpers for tools ---------------------------------------------------------

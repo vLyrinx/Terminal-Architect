@@ -117,6 +117,10 @@ func get_hint() -> String:
 	return "Drag on floor: paint %s   Shift + drag: erase   Right click / Esc: cancel" % _zone_name()
 
 
+func get_cost_text() -> String:
+	return "Free"
+
+
 func _zone_name() -> String:
 	return TerminalZonesScript.ZONE_NAMES[zone]
 
