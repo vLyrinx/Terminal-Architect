@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=37 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -23,6 +23,8 @@
 [ext_resource type="Script" path="res://scripts/ui/build_menu.gd" id="26_buildmenu"]
 [ext_resource type="Script" path="res://scripts/ui/debug_overlay.gd" id="27_debug"]
 [ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
+[ext_resource type="Script" path="res://scripts/airside/runways.gd" id="29_runways"]
+[ext_resource type="Script" path="res://scripts/building/tools/runway_tool.gd" id="38_runwaytool"]
 [ext_resource type="Texture2D" path="res://ui/icons/floor.svg" id="30_icon_floor"]
 [ext_resource type="Texture2D" path="res://ui/icons/walls.svg" id="31_icon_walls"]
 [ext_resource type="Texture2D" path="res://ui/icons/doors.svg" id="32_icon_doors"]
@@ -36,6 +38,7 @@
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
 sky_horizon_color = Color(0.851, 0.91, 0.961, 1)
 ground_horizon_color = Color(0.851, 0.91, 0.961, 1)
+ground_bottom_color = Color(0.24, 0.36, 0.2, 1)
 
 [sub_resource type="Sky" id="Sky"]
 sky_material = SubResource("SkyMat")
@@ -59,9 +62,10 @@ shadow_enabled = true
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("5_ground")
 
-[node name="TerminalFloor" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects")]
+[node name="TerminalFloor" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "runways")]
 script = ExtResource("10_floor")
 placed_objects = NodePath("../PlacedObjects")
+runways = NodePath("../Runways")
 
 [node name="TerminalWalls" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor")]
 script = ExtResource("12_walls")
@@ -73,15 +77,20 @@ script = ExtResource("17_objects")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_walls = NodePath("../TerminalWalls")
 
-[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones")]
+[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "runways")]
 script = ExtResource("18_commands")
 placed_objects = NodePath("../PlacedObjects")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_walls = NodePath("../TerminalWalls")
 terminal_zones = NodePath("../TerminalZones")
+runways = NodePath("../Runways")
 
 [node name="TerminalZones" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("15_zones")
+terminal_floor = NodePath("../TerminalFloor")
+
+[node name="Runways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
+script = ExtResource("29_runways")
 terminal_floor = NodePath("../TerminalFloor")
 
 [node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("terminal_floor")]
@@ -91,7 +100,7 @@ terminal_floor = NodePath("../TerminalFloor")
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 85, 85)
 near = 0.1
-far = 1000.0
+far = 12000.0
 script = ExtResource("3_camera")
 
 [node name="Cutaway" type="Node" parent="." node_paths=PackedStringArray("camera", "terminal_floor", "terminal_walls")]
@@ -164,7 +173,14 @@ shortcut = 79
 placed_objects = NodePath("../../PlacedObjects")
 command_runner = NodePath("../../Commands")
 
-[node name="DemolishTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "command_runner")]
+[node name="RunwayTool" type="Node3D" parent="Building" node_paths=PackedStringArray("runways", "command_runner")]
+script = ExtResource("38_runwaytool")
+tool_name = "Runway"
+shortcut = 85
+runways = NodePath("../../Runways")
+command_runner = NodePath("../../Commands")
+
+[node name="DemolishTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "runways", "command_runner")]
 script = ExtResource("28_demolish")
 tool_name = "Demolish"
 menu_category = "demolish"
@@ -172,6 +188,7 @@ icon = ExtResource("36_icon_demolish")
 placed_objects = NodePath("../../PlacedObjects")
 terminal_floor = NodePath("../../TerminalFloor")
 terminal_walls = NodePath("../../TerminalWalls")
+runways = NodePath("../../Runways")
 command_runner = NodePath("../../Commands")
 
 [node name="EditTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "command_runner")]

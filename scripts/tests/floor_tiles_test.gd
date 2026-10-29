@@ -37,7 +37,7 @@ func _ready() -> void:
 	_expect("removing the part in chunk 1 frees that chunk",
 		_floor.set_rect(Rect2i(32, 0, 4, 4), false) == 16 and _chunk_count() == 1)
 
-	var edge := Rect2i(395, 395, 20, 20)
+	var edge := Rect2i(BuildGrid.PLOT_TILES - Vector2i(5, 5), Vector2i(20, 20))
 	_expect("rect past the plot edge is clipped (25 tiles)", _floor.set_rect(edge, true) == 25)
 
 	_floor.set_rect(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES), false)
@@ -45,11 +45,12 @@ func _ready() -> void:
 	await get_tree().process_frame  # emptied chunk nodes are freed at the end of the frame
 	_expect("removing everything leaves no chunk meshes", _chunk_count() == 0)
 
+	# A big terminal (400 x 400 m); the whole 4.5 x 2 km plot would never be floored.
 	var start_ms := Time.get_ticks_msec()
-	_floor.set_rect(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES), true)
+	_floor.set_rect(Rect2i(0, 0, 400, 400), true)
 	var ms := Time.get_ticks_msec() - start_ms
-	print("INFO | laying the whole 400 x 400 plot took %d ms, %d chunks" % [ms, _chunk_count()])
-	_expect("whole plot is 160000 tiles", _floor.get_floor_tile_count() == 160000)
+	print("INFO | laying a 400 x 400 area took %d ms, %d chunks" % [ms, _chunk_count()])
+	_expect("a 400 x 400 area is 160000 tiles", _floor.get_floor_tile_count() == 160000)
 
 	print("TEST DONE | %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	# Stays open so the results can be read in the Output panel. Close the window when done.

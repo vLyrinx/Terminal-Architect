@@ -32,6 +32,8 @@ const ROOF_SIDE_COLOR := Color(0.66, 0.69, 0.73)
 
 ## Optional PlacedObjects node (placed_objects.gd): floor under objects can't be removed.
 @export var placed_objects: Node3D
+## Optional Runways node (runways.gd): floor is never laid on a runway (checklist step 16).
+@export var runways: Node3D
 
 ## Per floor index: one byte per plot tile, 1 = floor.
 var _tiles := {}
@@ -87,7 +89,7 @@ func count_changes(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 	rect = _clip_to_plot(rect)
 	var area := rect.get_area()
 	if not _tiles.has(floor_index):
-		return area if filled else 0
+		return area - (runways.count_tiles_in(rect) if runways else 0) if filled else 0
 	var tiles: PackedByteArray = _tiles[floor_index]
 	var floored := 0
 	var protected := 0
@@ -97,7 +99,22 @@ func count_changes(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 			floored += tiles[row + x]
 			if not filled and tiles[row + x] == 1 and _has_object(Vector2i(x, y), floor_index):
 				protected += 1
+	if filled and runways:
+		return area - floored - runways.count_tiles_in(rect)  # runway tiles never have floor
 	return area - floored if filled else floored - protected
+
+
+## How many tiles in rect have floor.
+func count_floor_tiles(rect: Rect2i, floor_index := 0) -> int:
+	rect = _clip_to_plot(rect)
+	if not _tiles.has(floor_index):
+		return 0
+	var tiles: PackedByteArray = _tiles[floor_index]
+	var count := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		count += tiles.slice(row + rect.position.x, row + rect.end.x).count(1)
+	return count
 
 
 ## Total floor tiles on a floor.
@@ -110,17 +127,26 @@ func get_floor_tile_count(floor_index := 0) -> int:
 # --- Editing --------------------------------------------------------------------
 
 ## Lays floor on (filled = true) or removes it from every tile in rect.
-## Floor under placed objects is kept. Returns how many tiles changed.
+## Floor under placed objects is kept, and none is laid on runways.
+## Returns how many tiles changed.
 func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 	rect = _clip_to_plot(rect)
 	if rect.size.x <= 0 or rect.size.y <= 0:
 		return 0
 	var tiles := _get_tiles(floor_index)
 	var value := 1 if filled else 0
+	# Only the few runways overlapping rect are checked per tile.
+	var runway_rects: Array[Rect2i] = []
+	if filled and runways:
+		for id: int in runways.get_runways_in(rect):
+			runway_rects.append(runways.get_runway(id).rect)
 	var changed := 0
 	for y in range(rect.position.y, rect.end.y):
 		var row := y * BuildGrid.PLOT_TILES.x
 		for x in range(rect.position.x, rect.end.x):
+			if not runway_rects.is_empty() and runway_rects.any(
+					func(r: Rect2i) -> bool: return r.has_point(Vector2i(x, y))):
+				continue
 			if tiles[row + x] != value and (filled or not _has_object(Vector2i(x, y), floor_index)):
 				tiles[row + x] = value
 				changed += 1

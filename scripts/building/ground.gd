@@ -5,7 +5,7 @@ extends MeshInstance3D
 
 const GROUND_SHADER := preload("res://materials/ground_grid.gdshader")
 ## How far the ground reaches beyond the plot on each side, in metres.
-@export var margin := 400.0
+@export var margin := 6000.0
 
 var _material: ShaderMaterial
 

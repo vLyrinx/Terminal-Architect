@@ -24,8 +24,8 @@ const ACTION_KEYS := {
 @export_group("Zoom")
 ## Closest distance to the focus point, in metres (a passenger is about 1.8 m tall).
 @export var min_distance := 3.5
-## Furthest distance, in metres (enough to see the whole 400 m plot).
-@export var max_distance := 350.0
+## Furthest distance, in metres (enough to see the whole 4.5 km plot).
+@export var max_distance := 4000.0
 ## Distance is multiplied or divided by this for each wheel notch.
 @export var zoom_step := 1.15
 @export var start_distance := 120.0
@@ -52,8 +52,8 @@ const ACTION_KEYS := {
 @export var smoothing := 12.0
 
 @export_group("Limits")
-## The focus point stays within this many metres of the plot centre on X and Z.
-@export var plot_half_size := 200.0
+## The focus point may go this many metres past the plot edge.
+@export var plot_margin := 50.0
 
 var _target_focus := Vector3.ZERO
 var _target_yaw := 0.0
@@ -169,8 +169,9 @@ func _zoom(direction: float, factor: float) -> void:
 func _clamp_targets() -> void:
 	_target_pitch = clampf(_target_pitch, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
 	_target_distance = clampf(_target_distance, min_distance, max_distance)
-	_target_focus.x = clampf(_target_focus.x, -plot_half_size, plot_half_size)
-	_target_focus.z = clampf(_target_focus.z, -plot_half_size, plot_half_size)
+	var plot := BuildGrid.get_plot_rect().grow(plot_margin)
+	_target_focus.x = clampf(_target_focus.x, plot.position.x, plot.end.x)
+	_target_focus.z = clampf(_target_focus.z, plot.position.y, plot.end.y)
 	_target_focus.y = 0.0
 
 

@@ -5,14 +5,16 @@ extends Node3D
 
 const PERSON_SIZE := Vector3(0.5, 1.8, 0.35)
 const POST_SIZE := Vector3(2.0, 10.0, 2.0)
-const CORNER := 198.0
+## Posts stand this far inside each plot corner, in metres.
+const CORNER_INSET := 2.0
 
 
 func _ready() -> void:
 	_add_box(Vector3(0.0, PERSON_SIZE.y * 0.5, 0.0), PERSON_SIZE, Color(0.96, 0.49, 0.24))
 	var post_mat := _material(Color(0.27, 0.52, 0.93))
-	for x: float in [-CORNER, CORNER]:
-		for z: float in [-CORNER, CORNER]:
+	var plot := BuildGrid.get_plot_rect().grow(-CORNER_INSET)
+	for x: float in [plot.position.x, plot.end.x]:
+		for z: float in [plot.position.y, plot.end.y]:
 			_add_box(Vector3(x, POST_SIZE.y * 0.5, z), POST_SIZE, null, post_mat)
 
 

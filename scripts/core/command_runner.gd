@@ -18,6 +18,8 @@ const DeleteObjectCommandScript := preload("res://scripts/core/commands/delete_o
 const SetFloorCommandScript := preload("res://scripts/core/commands/set_floor_command.gd")
 const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_command.gd")
 const SetDoorCommandScript := preload("res://scripts/core/commands/set_door_command.gd")
+const PlaceRunwayCommandScript := preload("res://scripts/core/commands/place_runway_command.gd")
+const DeleteRunwayCommandScript := preload("res://scripts/core/commands/delete_runway_command.gd")
 ## Oldest commands are dropped from the history beyond this.
 const MAX_HISTORY := 500
 
@@ -30,6 +32,8 @@ const MAX_HISTORY := 500
 ## The TerminalZones node (terminal_zones.gd), so undoing a floor removal can
 ## put its zones back. Optional.
 @export var terminal_zones: Node3D
+## The Runways node (runways.gd).
+@export var runways: Node3D
 
 ## Commands that ran, oldest first.
 var history: Array = []
@@ -75,6 +79,10 @@ static func command_from_dict(data: Dictionary) -> RefCounted:
 			command = SetWallsCommandScript.new()
 		"set_door":
 			command = SetDoorCommandScript.new()
+		"place_runway":
+			command = PlaceRunwayCommandScript.new()
+		"delete_runway":
+			command = DeleteRunwayCommandScript.new()
 		_:
 			return null
 	command.load_dict(data)

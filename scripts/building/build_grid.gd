@@ -13,8 +13,8 @@ signal grid_visibility_changed(grid_visible: bool)
 
 ## Size of one tile in metres.
 const TILE_SIZE := 1.0
-## Plot size in tiles.
-const PLOT_TILES := Vector2i(400, 400)
+## Plot size in tiles: 4.5 x 2 km, room for a real-length runway (checklist step 16).
+const PLOT_TILES := Vector2i(4500, 2000)
 ## Height of one floor in metres (used once multiple floors exist).
 const FLOOR_HEIGHT := 4.0
 const ACTION_TOGGLE_GRID := "toggle_grid"

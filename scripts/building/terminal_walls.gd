@@ -201,6 +201,27 @@ func set_door(corner: Vector2i, horizontal: bool, door: bool, floor_index := 0) 
 
 # --- Storage --------------------------------------------------------------------
 
+## Wall and door pieces on the grid lines inside rect, its outline included
+## (checklist step 16: runways can't be built over walls).
+func count_pieces_in(rect: Rect2i, floor_index := 0) -> int:
+	if not _edges.has(floor_index):
+		return 0
+	rect = rect.intersection(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES))
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		return 0
+	var edges: Array = _edges[floor_index]
+	var horizontal: PackedByteArray = edges[0]
+	var vertical: PackedByteArray = edges[1]
+	var count := 0
+	for y in range(rect.position.y, rect.end.y + 1):
+		var row := horizontal.slice(rect.position.x + y * _stride, rect.end.x + y * _stride)
+		count += row.size() - row.count(Piece.NONE)
+	for y in range(rect.position.y, rect.end.y):
+		var row := vertical.slice(rect.position.x + y * _stride, rect.end.x + 1 + y * _stride)
+		count += row.size() - row.count(Piece.NONE)
+	return count
+
+
 func _get_edges(floor_index: int) -> Array:
 	if not _edges.has(floor_index):
 		var horizontal := PackedByteArray()

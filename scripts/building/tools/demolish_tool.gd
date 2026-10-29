@@ -1,8 +1,9 @@
 extends "res://scripts/building/build_tool.gd"
 ## Demolish tool (checklist step 15): drag a rectangle to clear everything in it.
 ##
-##   Left drag (or click)   remove objects, walls, doors and floor in the rectangle
-## Objects go first (one DeleteObjectCommand each), then every wall piece on
+##   Left drag (or click)   remove runways, objects, walls, doors and floor in the rectangle
+## Any runway the rectangle touches goes first, whole (one DeleteRunwayCommand
+## each, checklist step 16). Objects go next (one DeleteObjectCommand each), then every wall piece on
 ## the rectangle's grid lines, edges included (one SetWallsCommand), then the
 ## floor (one SetFloorCommand), which also clears its zones. Each part refunds
 ## part of its price (EconomySettings.sale_refund). The red ghost's label shows
@@ -12,6 +13,7 @@ const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 const DeleteObjectCommandScript := preload("res://scripts/core/commands/delete_object_command.gd")
 const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_command.gd")
 const SetFloorCommandScript := preload("res://scripts/core/commands/set_floor_command.gd")
+const DeleteRunwayCommandScript := preload("res://scripts/core/commands/delete_runway_command.gd")
 const GHOST_HEIGHT := 0.3
 const NO_TILE := Vector2i(-1, -1)
 
@@ -21,6 +23,8 @@ const NO_TILE := Vector2i(-1, -1)
 @export var terminal_floor: Node3D
 ## The TerminalWalls node (terminal_walls.gd).
 @export var terminal_walls: Node3D
+## The Runways node (runways.gd).
+@export var runways: Node3D
 ## The CommandRunner node (command_runner.gd).
 @export var command_runner: Node
 
@@ -83,15 +87,17 @@ func release(tile: Vector2i, in_plot: bool) -> void:
 	_dragging = false
 	var rect := BuildGrid.rect_from_tiles(_start, _end)
 	var p := _preview(rect)
-	if p.objects.size() + p.walls + p.floor > 0:
+	if p.runways.size() + p.objects.size() + p.walls + p.floor > 0:
+		for id: int in p.runways:
+			command_runner.submit(DeleteRunwayCommandScript.new(id))
 		for id: int in p.objects:
 			command_runner.submit(DeleteObjectCommandScript.new(id))
 		if p.walls > 0:
 			command_runner.submit(SetWallsCommandScript.new(_wall_runs(rect), false, get_floor()))
 		if p.floor > 0:
 			command_runner.submit(SetFloorCommandScript.new(rect, false, get_floor()))
-		print("BUILD | demolished %d objects, %d walls, %d floor tiles in %d x %d" % [
-			p.objects.size(), p.walls, p.floor, rect.size.x, rect.size.y])
+		print("BUILD | demolished %d runways, %d objects, %d walls, %d floor tiles in %d x %d" % [
+			p.runways.size(), p.objects.size(), p.walls, p.floor, rect.size.x, rect.size.y])
 	_hover_tile = tile
 	_hover_in_plot = in_plot
 	_update_ghost()
@@ -103,7 +109,7 @@ func cancel_drag() -> void:
 
 
 func get_hint() -> String:
-	return "Drag: remove objects, walls and floor   Refunds %d%%   Right click / Esc: cancel" % \
+	return "Drag: remove runways, objects, walls and floor   Refunds %d%%   Right click / Esc: cancel" % \
 		roundi(Money.settings.sale_refund * 100.0)
 
 
@@ -111,26 +117,28 @@ func get_cost_text() -> String:
 	return "Refund %d%%" % roundi(Money.settings.sale_refund * 100.0)
 
 
-## What demolishing rect would remove: {"objects": object IDs, "walls": wall
-## pieces, "floor": floor tiles, "refund": money back}.
+## What demolishing rect would remove: {"runways": runway IDs, "objects":
+## object IDs, "walls": wall pieces, "floor": floor tiles, "refund": money back}.
+## Counts use whole-row and per-object checks rather than visiting every tile,
+## so dragging across a large part of the 4.5 km plot stays smooth. The refund
+## counts doors as plain wall, so it can be slightly low.
 func _preview(rect: Rect2i) -> Dictionary:
-	var ids := {}
-	var tiles := 0
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
-			var tile := Vector2i(x, y)
-			var id: int = placed_objects.get_object_at(tile, get_floor())
-			if id != 0:
-				ids[id] = true
-			if terminal_floor.has_floor(tile, get_floor()):
-				tiles += 1
-	var value := tiles * Money.settings.floor_tile_cost
-	for id: int in ids:
-		var def := ObjectCatalog.get_def(placed_objects.get_object(id).def_id)
-		value += def.cost if def else 0
-	var walls := SetWallsCommandScript.new(_wall_runs(rect), false, get_floor()).preview(command_runner)
-	return {"objects": ids.keys(), "walls": walls.walls, "floor": tiles,
-		"refund": Money.refund_for(value) + walls.amount}
+	var object_ids: Array[int] = []
+	var value := 0
+	for id: int in placed_objects.get_ids():
+		var obj: RefCounted = placed_objects.get_object(id)
+		if obj.floor_index == get_floor() and obj.tiles.any(func(t: Vector2i) -> bool: return rect.has_point(t)):
+			object_ids.append(id)
+			var def := ObjectCatalog.get_def(obj.def_id)
+			value += def.cost if def else 0
+	var tiles: int = terminal_floor.count_floor_tiles(rect, get_floor())
+	var walls: int = terminal_walls.count_pieces_in(rect, get_floor())
+	value += tiles * Money.settings.floor_tile_cost + walls * Money.settings.wall_cost
+	var refund := Money.refund_for(value)
+	var runway_ids: Array[int] = runways.get_runways_in(rect) if runways else ([] as Array[int])
+	for id in runway_ids:
+		refund += DeleteRunwayCommandScript.new(id).preview(command_runner)
+	return {"runways": runway_ids, "objects": object_ids, "walls": walls, "floor": tiles, "refund": refund}
 
 
 ## Every grid line inside rect, edges included, as wall runs.
@@ -158,6 +166,8 @@ func _update_ghost() -> void:
 	if _dragging:
 		var p := _preview(rect)
 		var parts: Array[String] = []
+		if p.runways.size() > 0:
+			parts.append("%d runway%s" % [p.runways.size(), "s" if p.runways.size() > 1 else ""])
 		if p.objects.size() > 0:
 			parts.append("%d objects" % p.objects.size())
 		if p.walls > 0:

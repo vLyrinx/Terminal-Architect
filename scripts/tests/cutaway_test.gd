@@ -9,6 +9,9 @@ const TerminalFloorScript := preload("res://scripts/building/terminal_floor.gd")
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 const PlacedObjectsScript := preload("res://scripts/objects/placed_objects.gd")
 const CutawayScript := preload("res://scripts/camera/cutaway.gd")
+## Mesh vertices are 32-bit floats about 2 km from the origin on the 4.5 km
+## plot (checklist step 16), so sizes are compared to the millimetre.
+const MM := 0.001
 
 var _failures := 0
 var _floor: TerminalFloorScript
@@ -54,13 +57,13 @@ func _ready() -> void:
 	var h := TerminalWallsScript.HALF
 	var roof_box: AABB = _floor.get_node("Roofs/Roof_0_0_0").mesh.get_aabb()
 	_expect("roof covers the walls: %.2f x %.2f m" % [roof_box.size.x, roof_box.size.z],
-		is_equal_approx(roof_box.size.x, 12.0 + 2.0 * h) and is_equal_approx(roof_box.size.z, 8.0 + 2.0 * h))
+		absf(roof_box.size.x - (12.0 + 2.0 * h)) < MM and absf(roof_box.size.z - (8.0 + 2.0 * h)) < MM)
 	_expect("room roof has no overlaps (top area %.2f)" % _roof_top_area("Roof_0_0_0"),
-		is_equal_approx(_roof_top_area("Roof_0_0_0"), 96.0 + 40.0 * h + 4.0 * h * h))
+		absf(_roof_top_area("Roof_0_0_0") - (96.0 + 40.0 * h + 4.0 * h * h)) < MM * 10.0)
 	_floor.set_rect(Rect2i(40, 10, 4, 4), true)  # an L shape, with one inner corner
 	_floor.set_rect(Rect2i(40, 14, 2, 3), true)
 	_expect("L-shaped roof has no overlaps (top area %.2f)" % _roof_top_area("Roof_1_0_0"),
-		is_equal_approx(_roof_top_area("Roof_1_0_0"), 22.0 + 22.0 * h + 4.0 * h * h))
+		absf(_roof_top_area("Roof_1_0_0") - (22.0 + 22.0 * h + 4.0 * h * h)) < MM * 10.0)
 	_floor.set_roof_visible(false)
 	_expect("roof can be hidden", not _floor.get_node("Roofs").visible)
 	_floor.set_roof_visible(true)

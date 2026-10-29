@@ -60,7 +60,7 @@ func _ready() -> void:
 	_expect("it is split into two chunk meshes",
 		_verts("Chunk_0_1_0") == WALL_BOX_VERTS and _verts("Chunk_1_1_0") == WALL_BOX_VERTS)
 	_expect("wall past the plot edge is clipped (2 pieces)",
-		_walls.set_run(Vector2i(398, 400), Vector2i(402, 400), true) == 2)
+		_walls.set_run(Vector2i(4498, 2000), Vector2i(4502, 2000), true) == 2)
 
 	var c := BuildGrid.tile_corner_to_world(Vector2i(5, 5))
 	_expect("nearest corner", BuildGrid.world_to_corner(c + Vector3(0.3, 0, -0.4)) == Vector2i(5, 5))
@@ -71,7 +71,7 @@ func _ready() -> void:
 
 	_walls.set_run(Vector2i(15, 10), Vector2i(15, 14), false)
 	_walls.set_run(Vector2i(30, 40), Vector2i(34, 40), false)
-	_walls.set_run(Vector2i(398, 400), Vector2i(400, 400), false)
+	_walls.set_run(Vector2i(4498, 2000), Vector2i(4500, 2000), false)
 	await get_tree().process_frame  # emptied chunk nodes are freed at the end of the frame
 	_expect("removing everything leaves no pieces and no meshes",
 		_walls.get_piece_counts().walls == 0 and _walls.get_child_count() == 0)

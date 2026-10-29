@@ -11,3 +11,4 @@
 3. **Step-by-Step Execution:** Build only the specific step given in the current prompt.
 4. **Verification & Testing:** Run the game to check for errors, tell the user what to test, and provide a git commit message.
 5. **No Checklist Edits:** The user manages the checklist manually.
+6. **Strict Test Isolation (CRITICAL):** When testing code, test ONLY the exact new feature, script, or change built in the current prompt. NEVER re-run, re-test, or validate previous milestones, old systems, or unrelated features unless explicitly asked.

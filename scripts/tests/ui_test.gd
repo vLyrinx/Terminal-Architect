@@ -8,6 +8,7 @@ extends Node
 const MAIN := preload("res://scenes/main.tscn")
 const WallsCmd := preload("res://scripts/core/commands/set_walls_command.gd")
 const PlaceCmd := preload("res://scripts/core/commands/place_object_command.gd")
+const PlaceRunwayCmd := preload("res://scripts/core/commands/place_runway_command.gd")
 
 var _failures := 0
 var _main: Node
@@ -46,7 +47,8 @@ func _ready() -> void:
 	_expect("structures has floor, walls, room and doors", counts.structures == 4)
 	_expect("zones has three zones", counts.zones == 3)
 	_expect("terminal has the five core objects", counts.terminal == 5)
-	_expect("airside is empty and greyed out", counts.airside == 0 and menu._category_buttons.airside.disabled)
+	_expect("airside has the three runway sizes and is enabled",
+		counts.airside == 3 and not menu._category_buttons.airside.disabled)
 	_expect("demolish has demolish and select", counts.demolish == 2)
 	_expect("panel starts closed", not menu._item_panel.visible)
 
@@ -105,6 +107,31 @@ func _ready() -> void:
 	_expect("demolish removes floor, walls and the object", floor_node.get_floor_tile_count() == 0
 		and walls_node.get_piece_counts().walls == 0 and objects.get_count() == 0)
 	_expect("demolish refunds money", Money.balance > before)
+
+	# Runway from the Airside menu (checklist step 16)
+	menu._category_buttons.airside.pressed.emit()
+	await _frames(1)
+	menu._cards["runway:medium"].pressed.emit()
+	await _frames(1)
+	_expect("Airside card selects the runway tool at medium size", manager.active_tool != null
+		and manager.active_tool.name == "RunwayTool" and manager.active_tool.get_active_item_id() == "runway:medium")
+	_expect("tool strip shows the runway width", menu._tool_title.text.begins_with("Medium runway (45 m wide)"))
+	_key(KEY_ESCAPE)
+	runner.submit(PlaceRunwayCmd.new(&"medium", Vector2i(1500, 1000), Vector2i(3500, 1000)))
+	var runways: Node = _main.get_node("Runways")
+	_expect("runway built in the main scene", runways.get_count() == 1)
+	var camera: Camera3D = _main.get_node("Camera3D")
+	camera.set_process(false)
+	var threshold: Vector3 = runways.get_ends()[0].position
+	camera.global_position = threshold + Vector3(-60, 70, 55)
+	camera.look_at(threshold + Vector3(60, 0, 0))
+	await _frames(3)
+	await _screenshot("runway_threshold")
+	camera.global_position = threshold + Vector3(1000, 1400, 1300)
+	camera.look_at(threshold + Vector3(1000, 0, 0))
+	await _frames(3)
+	await _screenshot("runway_whole")
+	camera.set_process(true)
 
 	# Debug overlay
 	_expect("debug overlay starts hidden", not overlay.visible)
