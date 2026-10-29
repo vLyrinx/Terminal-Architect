@@ -3,9 +3,10 @@ extends "res://scripts/building/build_tool.gd"
 ##
 ##   Left click    place the object (as a PlaceObjectCommand)
 ##   R             rotate 90 degrees
-##   Tab           next object type
+##   Tab           next object type (Shift + Tab: previous)
 ## The ghost is the object's own model, centred on the mouse and snapped to
-## the grid: green where it fits, red where it doesn't, with the reason above it.
+## the grid: green where it fits, red where it doesn't. The label above it shows
+## the object's name and cost, or why it can't go there.
 
 const PlaceObjectCommandScript := preload("res://scripts/core/commands/place_object_command.gd")
 
@@ -33,7 +34,6 @@ func _ready() -> void:
 	_label.pixel_size = 0.0015
 	_label.font_size = 24
 	_label.outline_size = 8
-	_label.modulate = Color(1.0, 0.75, 0.75)
 	_label.visible = false
 	add_child(_label)
 
@@ -66,9 +66,14 @@ func _process(_delta: float) -> void:
 	_ghost.global_position = _position
 	_ghost.rotation = Vector3(0.0, _rotation, 0.0)
 	_set_ghost_valid(_reason == "")
-	_label.visible = _reason != ""
-	_label.text = _reason
-	_label.global_position = _position + Vector3.UP * 1.6
+	_label.visible = true
+	if _reason == "":
+		_label.text = "%s   %s" % [def.display_name, format_cost(def.cost)]
+		_label.modulate = Color.WHITE
+	else:
+		_label.text = _reason
+		_label.modulate = Color(1.0, 0.75, 0.75)
+	_label.global_position = _position + Vector3.UP * 2.8
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -78,7 +83,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_rotation = wrapf(_rotation + PI * 0.5, 0.0, TAU)
 		get_viewport().set_input_as_handled()
 	elif event.physical_keycode == KEY_TAB and _defs.size() > 1:
-		_def_index = (_def_index + 1) % _defs.size()
+		var step := -1 if event.shift_pressed else 1
+		_def_index = posmod(_def_index + step, _defs.size())
 		_rebuild_ghost()
 		manager.tool_changed.emit(self)  # refreshes the hint with the new object's name
 		get_viewport().set_input_as_handled()
@@ -95,8 +101,19 @@ func get_hint() -> String:
 	if _defs.is_empty():
 		return "No objects in data/objects/"
 	var def: Resource = _defs[_def_index]
-	return "Click: place %s ($%d)   R: rotate   Tab: next object   Right click / Esc: cancel" % [
-		def.display_name, def.cost]
+	return "%s: %s (%s)   %d of %d   Click: place   R: rotate   Tab / Shift+Tab: change object   Esc: cancel" % [
+		def.category, def.display_name, format_cost(def.cost), _def_index + 1, _defs.size()]
+
+
+## "$15,000"
+static func format_cost(amount: int) -> String:
+	var digits := str(absi(amount))
+	var grouped := ""
+	for i in digits.length():
+		if i > 0 and (digits.length() - i) % 3 == 0:
+			grouped += ","
+		grouped += digits[i]
+	return ("-$" if amount < 0 else "$") + grouped
 
 
 func _rebuild_ghost() -> void:

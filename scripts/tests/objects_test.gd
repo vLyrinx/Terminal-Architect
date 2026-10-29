@@ -28,6 +28,7 @@ func _ready() -> void:
 	_floor = TerminalFloorScript.new()
 	add_child(_floor)
 	_objects = PlacedObjectsScript.new()
+	_floor.placed_objects = _objects
 	_walls = TerminalWallsScript.new()
 	_walls.placed_objects = _objects
 	add_child(_walls)
@@ -96,9 +97,33 @@ func _ready() -> void:
 	_expect("free rotation footprint works (45 degrees covers %d tiles)" % free_tiles.size(),
 		free_tiles.has(Vector2i(5, 5)) and free_tiles.size() >= 1)
 
-	_add_view(_corner(15, 14))
-	await get_tree().process_frame
-	await get_tree().process_frame
+	_expect("floor under an object can't be removed",
+		_floor.set_rect(Rect2i(11, 16, 2, 1), false) == 0 and _floor.has_floor(Vector2i(12, 16)))
+	_expect("floor next to it still can", _floor.set_rect(Rect2i(13, 16, 1, 1), false) == 1)
+
+	# Core terminal objects (checklist step 12): each loads and places on the floor.
+	var ids := ObjectCatalog.get_all().map(func(d: Resource) -> String: return String(d.id))
+	_expect("catalog in menu order: %s" % ", ".join(ids), ids == ["checkin_desk", "security_scanner",
+		"seat_row", "toilet_block", "gate_desk", "test_bench"])
+	_floor.set_rect(Rect2i(30, 10, 30, 10), true)
+	var x := 31
+	for def: Resource in ObjectCatalog.get_all():
+		if def.id == &"test_bench":
+			continue
+		var pos: Vector3 = _objects.snap_position(def, _corner(x, 14) + Vector3(def.footprint.x * 0.5, 0, 0), 0.0)
+		var placed := _runner.submit(PlaceCmd.new(def.id, pos, 0.0))
+		var area: int = def.footprint.x * def.footprint.y
+		_expect("%s (%s) places with a %d x %d footprint" % [def.display_name, def.category,
+			def.footprint.x, def.footprint.y], placed and _objects.get_object(_last_id()).tiles.size() == area)
+		x += def.footprint.x + 2
+
+	_add_view(_corner(43, 14), 16.0)
+	for i in 3:
+		await RenderingServer.frame_post_draw
+	# Screenshot of the result, for checking the models without the editor.
+	var shot := get_viewport().get_texture().get_image()
+	shot.save_png("user://objects_test.png")
+	print("INFO | screenshot saved to %s" % ProjectSettings.globalize_path("user://objects_test.png"))
 	print("TEST DONE | %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))
 	# Stays open so the results can be read in the Output panel. Close the window when done.
 
@@ -138,14 +163,14 @@ func _tiles(id: int) -> Array:
 
 
 ## Camera and sun looking down at a point, so the result can be seen.
-func _add_view(target: Vector3) -> void:
+func _add_view(target: Vector3, distance := 12.0) -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, 30, 0)
 	sun.shadow_enabled = true
 	add_child(sun)
 	var camera := Camera3D.new()
 	add_child(camera)
-	camera.position = target + Vector3(0, 9, 8)
+	camera.position = target + Vector3(0, 0.75, 0.66) * distance
 	camera.look_at(target)
 	camera.current = true
 

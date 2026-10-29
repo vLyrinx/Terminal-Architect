@@ -7,7 +7,7 @@ const OBJECTS_DIR := "res://data/objects/"
 
 ## StringName ID -> ObjectDef
 var _defs := {}
-## Definitions in file name order, for menus.
+## Definitions in build menu order (by category, then name).
 var _ordered: Array = []
 
 
@@ -36,6 +36,7 @@ func load_all() -> void:
 			continue
 		_defs[def.id] = def
 		_ordered.append(def)
+	_ordered.sort_custom(_menu_order)
 	print("OBJECTS | %d object types loaded: %s" % [_ordered.size(),
 		", ".join(_ordered.map(func(d: ObjectDefScript) -> String: return String(d.id)))])
 
@@ -45,6 +46,14 @@ func get_def(id: StringName) -> ObjectDefScript:
 	return _defs.get(id)
 
 
-## Every definition, in file name order.
+## Every definition, in build menu order.
 func get_all() -> Array:
 	return _ordered.duplicate()
+
+
+func _menu_order(a: ObjectDefScript, b: ObjectDefScript) -> bool:
+	var ca := ObjectDefScript.CATEGORIES.find(a.category)
+	var cb := ObjectDefScript.CATEGORIES.find(b.category)
+	if ca != cb:
+		return ca < cb
+	return a.display_name.naturalnocasecmp_to(b.display_name) < 0

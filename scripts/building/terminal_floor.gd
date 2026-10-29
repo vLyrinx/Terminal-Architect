@@ -20,6 +20,9 @@ const CHUNK_TILES := 32
 ## Thickness of the floor slab in metres. Things standing on the floor sit this high.
 const THICKNESS := 0.1
 
+## Optional PlacedObjects node (placed_objects.gd): floor under objects can't be removed.
+@export var placed_objects: Node3D
+
 ## Per floor index: one byte per plot tile, 1 = floor.
 var _tiles := {}
 ## Vector3i(chunk x, chunk y, floor index) -> MeshInstance3D
@@ -56,11 +59,14 @@ func count_changes(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 		return area if filled else 0
 	var tiles: PackedByteArray = _tiles[floor_index]
 	var floored := 0
+	var protected := 0
 	for y in range(rect.position.y, rect.end.y):
 		var row := y * BuildGrid.PLOT_TILES.x
 		for x in range(rect.position.x, rect.end.x):
 			floored += tiles[row + x]
-	return area - floored if filled else floored
+			if not filled and tiles[row + x] == 1 and _has_object(Vector2i(x, y), floor_index):
+				protected += 1
+	return area - floored if filled else floored - protected
 
 
 ## Total floor tiles on a floor.
@@ -73,7 +79,7 @@ func get_floor_tile_count(floor_index := 0) -> int:
 # --- Editing --------------------------------------------------------------------
 
 ## Lays floor on (filled = true) or removes it from every tile in rect.
-## Returns how many tiles changed.
+## Floor under placed objects is kept. Returns how many tiles changed.
 func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 	rect = _clip_to_plot(rect)
 	if rect.size.x <= 0 or rect.size.y <= 0:
@@ -84,7 +90,7 @@ func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 	for y in range(rect.position.y, rect.end.y):
 		var row := y * BuildGrid.PLOT_TILES.x
 		for x in range(rect.position.x, rect.end.x):
-			if tiles[row + x] != value:
+			if tiles[row + x] != value and (filled or not _has_object(Vector2i(x, y), floor_index)):
 				tiles[row + x] = value
 				changed += 1
 	_tiles[floor_index] = tiles  # PackedByteArray is copied on assignment
@@ -112,6 +118,10 @@ func _get_tiles(floor_index: int) -> PackedByteArray:
 		tiles.resize(BuildGrid.get_tile_count())
 		_tiles[floor_index] = tiles
 	return _tiles[floor_index]
+
+
+func _has_object(tile: Vector2i, floor_index: int) -> bool:
+	return placed_objects != null and placed_objects.get_object_at(tile, floor_index) != 0
 
 
 func _clip_to_plot(rect: Rect2i) -> Rect2i:

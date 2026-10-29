@@ -1,0 +1,15 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/objects/object_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://models/objects/seat_row.tscn" id="2_model"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"seat_row"
+display_name = "Row of seats"
+category = "Seating"
+cost = 1200
+footprint = Vector2i(4, 1)
+model = ExtResource("2_model")
+free_placeable = true
+requires_floor = true

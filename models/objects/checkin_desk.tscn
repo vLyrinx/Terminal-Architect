@@ -1,0 +1,119 @@
+[gd_scene load_steps=20 format=3]
+
+[sub_resource type="StandardMaterial3D" id="White"]
+albedo_color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="LightGrey"]
+albedo_color = Color(0.8, 0.82, 0.86, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Dark"]
+albedo_color = Color(0.2, 0.22, 0.26, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Blue"]
+albedo_color = Color(0.22, 0.5, 0.86, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="CounterMesh"]
+material = SubResource("White")
+size = Vector3(1.3, 1, 0.6)
+
+[sub_resource type="BoxMesh" id="TopMesh"]
+material = SubResource("LightGrey")
+size = Vector3(1.42, 0.05, 0.72)
+
+[sub_resource type="BoxMesh" id="StripMesh"]
+material = SubResource("Blue")
+size = Vector3(1.3, 0.12, 0.02)
+
+[sub_resource type="BoxMesh" id="BeltBaseMesh"]
+material = SubResource("LightGrey")
+size = Vector3(0.62, 0.34, 0.8)
+
+[sub_resource type="BoxMesh" id="BeltTopMesh"]
+material = SubResource("Dark")
+size = Vector3(0.56, 0.03, 0.74)
+
+[sub_resource type="BoxMesh" id="MonitorMesh"]
+material = SubResource("Dark")
+size = Vector3(0.42, 0.28, 0.04)
+
+[sub_resource type="BoxMesh" id="MonitorStandMesh"]
+material = SubResource("Dark")
+size = Vector3(0.06, 0.1, 0.06)
+
+[sub_resource type="CylinderMesh" id="PoleMesh"]
+material = SubResource("LightGrey")
+top_radius = 0.04
+bottom_radius = 0.04
+height = 2.3
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxMesh" id="SignMesh"]
+material = SubResource("Blue")
+size = Vector3(1, 0.34, 0.05)
+
+[sub_resource type="CylinderMesh" id="StoolSeatMesh"]
+material = SubResource("Dark")
+top_radius = 0.2
+bottom_radius = 0.2
+height = 0.05
+radial_segments = 8
+rings = 1
+
+[sub_resource type="CylinderMesh" id="StoolPostMesh"]
+material = SubResource("LightGrey")
+top_radius = 0.03
+bottom_radius = 0.03
+height = 0.62
+radial_segments = 6
+rings = 1
+
+[node name="CheckinDesk" type="Node3D"]
+
+[node name="Counter" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.5, 0.05)
+mesh = SubResource("CounterMesh")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 1.025, 0.05)
+mesh = SubResource("TopMesh")
+
+[node name="Strip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.82, 0.36)
+mesh = SubResource("StripMesh")
+
+[node name="BeltBase" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.63, 0.17, 0.15)
+mesh = SubResource("BeltBaseMesh")
+
+[node name="BeltTop" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.63, 0.355, 0.15)
+mesh = SubResource("BeltTopMesh")
+
+[node name="Monitor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 1.25, -0.12)
+mesh = SubResource("MonitorMesh")
+
+[node name="MonitorStand" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 1.1, -0.12)
+mesh = SubResource("MonitorStandMesh")
+
+[node name="SignPole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 1.15, -0.8)
+mesh = SubResource("PoleMesh")
+
+[node name="Sign" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 2.2, -0.8)
+mesh = SubResource("SignMesh")
+
+[node name="StoolSeat" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.645, -0.55)
+mesh = SubResource("StoolSeatMesh")
+
+[node name="StoolPost" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.31, -0.55)
+mesh = SubResource("StoolPostMesh")

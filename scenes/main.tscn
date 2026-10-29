@@ -53,8 +53,9 @@ shadow_enabled = true
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("5_ground")
 
-[node name="TerminalFloor" type="Node3D" parent="."]
+[node name="TerminalFloor" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects")]
 script = ExtResource("10_floor")
+placed_objects = NodePath("../PlacedObjects")
 
 [node name="TerminalWalls" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects")]
 script = ExtResource("12_walls")

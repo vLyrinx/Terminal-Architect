@@ -1,0 +1,103 @@
+[gd_scene load_steps=14 format=3]
+
+[sub_resource type="StandardMaterial3D" id="White"]
+albedo_color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="LightGrey"]
+albedo_color = Color(0.8, 0.82, 0.86, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Dark"]
+albedo_color = Color(0.2, 0.22, 0.26, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Amber"]
+albedo_color = Color(0.98, 0.72, 0.2, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="TableMesh"]
+material = SubResource("LightGrey")
+size = Vector3(0.7, 0.78, 1.1)
+
+[sub_resource type="BoxMesh" id="TunnelMesh"]
+material = SubResource("White")
+size = Vector3(0.9, 1.3, 1.3)
+
+[sub_resource type="BoxMesh" id="TunnelStripeMesh"]
+material = SubResource("Amber")
+size = Vector3(0.92, 0.12, 1.32)
+
+[sub_resource type="BoxMesh" id="CurtainMesh"]
+material = SubResource("Dark")
+size = Vector3(0.56, 0.4, 0.02)
+
+[sub_resource type="BoxMesh" id="BeltMesh"]
+material = SubResource("Dark")
+size = Vector3(0.56, 0.03, 3.6)
+
+[sub_resource type="BoxMesh" id="ArchPostMesh"]
+material = SubResource("White")
+size = Vector3(0.14, 2.1, 0.45)
+
+[sub_resource type="BoxMesh" id="ArchTopMesh"]
+material = SubResource("Amber")
+size = Vector3(0.9, 0.2, 0.45)
+
+[sub_resource type="BoxMesh" id="ArchLightMesh"]
+material = SubResource("Dark")
+size = Vector3(0.3, 0.08, 0.02)
+
+[sub_resource type="BoxMesh" id="FloorMatMesh"]
+material = SubResource("Dark")
+size = Vector3(0.6, 0.02, 0.9)
+
+[node name="SecurityScanner" type="Node3D"]
+
+[node name="InFeed" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.39, 1.25)
+mesh = SubResource("TableMesh")
+
+[node name="Tunnel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.65, 0)
+mesh = SubResource("TunnelMesh")
+
+[node name="TunnelStripe" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 1.22, 0)
+mesh = SubResource("TunnelStripeMesh")
+
+[node name="CurtainFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.98, 0.66)
+mesh = SubResource("CurtainMesh")
+
+[node name="CurtainBack" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.98, -0.66)
+mesh = SubResource("CurtainMesh")
+
+[node name="OutFeed" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.39, -1.25)
+mesh = SubResource("TableMesh")
+
+[node name="Belt" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.795, 0)
+mesh = SubResource("BeltMesh")
+
+[node name="ArchLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13, 1.05, 0)
+mesh = SubResource("ArchPostMesh")
+
+[node name="ArchRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.87, 1.05, 0)
+mesh = SubResource("ArchPostMesh")
+
+[node name="ArchTop" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 2.2, 0)
+mesh = SubResource("ArchTopMesh")
+
+[node name="ArchLight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 2.2, 0.235)
+mesh = SubResource("ArchLightMesh")
+
+[node name="ArchFloorMat" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.01, 0)
+mesh = SubResource("FloorMatMesh")

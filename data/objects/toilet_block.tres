@@ -1,0 +1,15 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/objects/object_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://models/objects/toilet_block.tscn" id="2_model"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"toilet_block"
+display_name = "Toilet block"
+category = "Facilities"
+cost = 6000
+footprint = Vector2i(3, 2)
+model = ExtResource("2_model")
+free_placeable = false
+requires_floor = true

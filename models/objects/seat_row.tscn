@@ -1,0 +1,87 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Seat"]
+albedo_color = Color(0.17, 0.55, 0.76, 1)
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="Metal"]
+albedo_color = Color(0.62, 0.65, 0.7, 1)
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BeamMesh"]
+material = SubResource("Metal")
+size = Vector3(3.8, 0.06, 0.1)
+
+[sub_resource type="BoxMesh" id="LegMesh"]
+material = SubResource("Metal")
+size = Vector3(0.08, 0.36, 0.46)
+
+[sub_resource type="BoxMesh" id="PanMesh"]
+material = SubResource("Seat")
+size = Vector3(0.86, 0.08, 0.48)
+
+[sub_resource type="BoxMesh" id="BackMesh"]
+material = SubResource("Seat")
+size = Vector3(0.86, 0.46, 0.07)
+
+[sub_resource type="BoxMesh" id="ArmMesh"]
+material = SubResource("Metal")
+size = Vector3(0.05, 0.05, 0.42)
+
+[node name="SeatRow" type="Node3D"]
+
+[node name="Beam" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, -0.05)
+mesh = SubResource("BeamMesh")
+
+[node name="LegLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.45, 0.18, 0)
+mesh = SubResource("LegMesh")
+
+[node name="LegRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.45, 0.18, 0)
+mesh = SubResource("LegMesh")
+
+[node name="Pan1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.44, 0.05)
+mesh = SubResource("PanMesh")
+
+[node name="Back1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.72, -0.21)
+mesh = SubResource("BackMesh")
+
+[node name="Pan2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.44, 0.05)
+mesh = SubResource("PanMesh")
+
+[node name="Back2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.72, -0.21)
+mesh = SubResource("BackMesh")
+
+[node name="Pan3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.44, 0.05)
+mesh = SubResource("PanMesh")
+
+[node name="Back3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.72, -0.21)
+mesh = SubResource("BackMesh")
+
+[node name="Pan4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.44, 0.05)
+mesh = SubResource("PanMesh")
+
+[node name="Back4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.72, -0.21)
+mesh = SubResource("BackMesh")
+
+[node name="Arm1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0.62, 0.02)
+mesh = SubResource("ArmMesh")
+
+[node name="Arm2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, 0.02)
+mesh = SubResource("ArmMesh")
+
+[node name="Arm3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.62, 0.02)
+mesh = SubResource("ArmMesh")

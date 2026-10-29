@@ -8,6 +8,9 @@ extends Resource
 ## floor level. Footprint X runs along the model's local X axis, footprint Y
 ## along its local Z axis, and the front of the object faces +Z.
 
+## Categories in build menu order. Keep in step with the category list below.
+const CATEGORIES := ["Terminal", "Check-in", "Security", "Seating", "Facilities", "Gate", "Test"]
+
 ## Unique ID used in saves and commands. Never change it once objects exist.
 @export var id: StringName
 @export var display_name := ""

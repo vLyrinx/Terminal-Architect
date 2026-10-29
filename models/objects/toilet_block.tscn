@@ -1,0 +1,111 @@
+[gd_scene load_steps=12 format=3]
+
+[sub_resource type="StandardMaterial3D" id="White"]
+albedo_color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="Door"]
+albedo_color = Color(0.45, 0.72, 0.88, 1)
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="Porcelain"]
+albedo_color = Color(0.99, 0.99, 1, 1)
+roughness = 0.3
+
+[sub_resource type="StandardMaterial3D" id="Blue"]
+albedo_color = Color(0.22, 0.5, 0.86, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="BackPanelMesh"]
+material = SubResource("White")
+size = Vector3(3, 2.2, 0.1)
+
+[sub_resource type="BoxMesh" id="PartitionMesh"]
+material = SubResource("White")
+size = Vector3(0.06, 2, 1.3)
+
+[sub_resource type="BoxMesh" id="DoorMesh"]
+material = SubResource("Door")
+size = Vector3(0.86, 1.9, 0.05)
+
+[sub_resource type="BoxMesh" id="BowlMesh"]
+material = SubResource("Porcelain")
+size = Vector3(0.38, 0.4, 0.55)
+
+[sub_resource type="BoxMesh" id="CisternMesh"]
+material = SubResource("Porcelain")
+size = Vector3(0.38, 0.35, 0.15)
+
+[sub_resource type="BoxMesh" id="SignMesh"]
+material = SubResource("Blue")
+size = Vector3(0.7, 0.4, 0.05)
+
+[sub_resource type="BoxMesh" id="SignMarkMesh"]
+material = SubResource("Porcelain")
+size = Vector3(0.12, 0.26, 0.01)
+
+[node name="ToiletBlock" type="Node3D"]
+
+[node name="BackPanel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -0.95)
+mesh = SubResource("BackPanelMesh")
+
+[node name="Partition1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.47, 1, -0.25)
+mesh = SubResource("PartitionMesh")
+
+[node name="Partition2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.49, 1, -0.25)
+mesh = SubResource("PartitionMesh")
+
+[node name="Partition3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.49, 1, -0.25)
+mesh = SubResource("PartitionMesh")
+
+[node name="Partition4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.47, 1, -0.25)
+mesh = SubResource("PartitionMesh")
+
+[node name="Door1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.98, 1, 0.4)
+mesh = SubResource("DoorMesh")
+
+[node name="Door2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.4)
+mesh = SubResource("DoorMesh")
+
+[node name="Door3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.98, 1, 0.4)
+mesh = SubResource("DoorMesh")
+
+[node name="Bowl1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.98, 0.2, -0.6)
+mesh = SubResource("BowlMesh")
+
+[node name="Bowl2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.6)
+mesh = SubResource("BowlMesh")
+
+[node name="Bowl3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.98, 0.2, -0.6)
+mesh = SubResource("BowlMesh")
+
+[node name="Cistern1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.98, 0.6, -0.82)
+mesh = SubResource("CisternMesh")
+
+[node name="Cistern2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -0.82)
+mesh = SubResource("CisternMesh")
+
+[node name="Cistern3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.98, 0.6, -0.82)
+mesh = SubResource("CisternMesh")
+
+[node name="Sign" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, -0.95)
+mesh = SubResource("SignMesh")
+
+[node name="SignMark" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, -0.92)
+mesh = SubResource("SignMarkMesh")

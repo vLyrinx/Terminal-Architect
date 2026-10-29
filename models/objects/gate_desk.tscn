@@ -1,0 +1,99 @@
+[gd_scene load_steps=16 format=3]
+
+[sub_resource type="StandardMaterial3D" id="White"]
+albedo_color = Color(0.95, 0.95, 0.94, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="LightGrey"]
+albedo_color = Color(0.8, 0.82, 0.86, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Dark"]
+albedo_color = Color(0.2, 0.22, 0.26, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Teal"]
+albedo_color = Color(0.15, 0.62, 0.6, 1)
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Yellow"]
+albedo_color = Color(0.98, 0.82, 0.2, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="DeskMesh"]
+material = SubResource("White")
+size = Vector3(1.5, 1, 0.55)
+
+[sub_resource type="BoxMesh" id="TopMesh"]
+material = SubResource("LightGrey")
+size = Vector3(1.6, 0.05, 0.65)
+
+[sub_resource type="BoxMesh" id="StripMesh"]
+material = SubResource("Teal")
+size = Vector3(1.5, 0.12, 0.02)
+
+[sub_resource type="BoxMesh" id="MonitorMesh"]
+material = SubResource("Dark")
+size = Vector3(0.42, 0.28, 0.04)
+
+[sub_resource type="BoxMesh" id="MonitorStandMesh"]
+material = SubResource("Dark")
+size = Vector3(0.06, 0.1, 0.06)
+
+[sub_resource type="BoxMesh" id="ScannerMesh"]
+material = SubResource("Dark")
+size = Vector3(0.18, 0.06, 0.2)
+
+[sub_resource type="CylinderMesh" id="PoleMesh"]
+material = SubResource("LightGrey")
+top_radius = 0.04
+bottom_radius = 0.04
+height = 2.4
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxMesh" id="SignMesh"]
+material = SubResource("Yellow")
+size = Vector3(0.9, 0.42, 0.06)
+
+[sub_resource type="BoxMesh" id="SignMarkMesh"]
+material = SubResource("Dark")
+size = Vector3(0.26, 0.24, 0.01)
+
+[node name="GateDesk" type="Node3D"]
+
+[node name="Desk" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0.05)
+mesh = SubResource("DeskMesh")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.025, 0.05)
+mesh = SubResource("TopMesh")
+
+[node name="Strip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.82, 0.335)
+mesh = SubResource("StripMesh")
+
+[node name="Monitor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 1.25, -0.1)
+mesh = SubResource("MonitorMesh")
+
+[node name="MonitorStand" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 1.1, -0.1)
+mesh = SubResource("MonitorStandMesh")
+
+[node name="BoardingScanner" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 1.08, 0.15)
+mesh = SubResource("ScannerMesh")
+
+[node name="SignPole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 1.2, -0.35)
+mesh = SubResource("PoleMesh")
+
+[node name="Sign" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.38, 2.3, -0.35)
+mesh = SubResource("SignMesh")
+
+[node name="SignMark" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 2.3, -0.315)
+mesh = SubResource("SignMarkMesh")
