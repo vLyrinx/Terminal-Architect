@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -6,6 +6,9 @@
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
 [ext_resource type="Script" path="res://scripts/building/ground.gd" id="5_ground"]
 [ext_resource type="Script" path="res://scripts/building/tile_highlighter.gd" id="6_highlight"]
+[ext_resource type="Script" path="res://scripts/building/build_manager.gd" id="7_build"]
+[ext_resource type="Script" path="res://scripts/building/tools/test_cube_tool.gd" id="8_cube"]
+[ext_resource type="Script" path="res://scripts/debug/build_bar_debug.gd" id="9_buildbar"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -52,6 +55,14 @@ script = ExtResource("3_camera")
 [node name="ScaleMarkers" type="Node3D" parent="."]
 script = ExtResource("4_markers")
 
+[node name="Building" type="Node3D" parent="."]
+script = ExtResource("7_build")
+
+[node name="TestCubeTool" type="Node3D" parent="Building"]
+script = ExtResource("8_cube")
+tool_name = "Test cube"
+shortcut = 66
+
 [node name="DebugUI" type="CanvasLayer" parent="."]
 
 [node name="ClockLabel" type="Label" parent="DebugUI"]
@@ -76,3 +87,17 @@ offset_right = 316.0
 offset_bottom = 218.0
 label_settings = SubResource("ClockLabelSettings")
 text = "Tile: none"
+
+[node name="BuildBar" type="VBoxContainer" parent="DebugUI" node_paths=PackedStringArray("build_manager")]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -96.0
+offset_right = 616.0
+offset_bottom = -16.0
+grow_vertical = 0
+alignment = 2
+mouse_filter = 2
+script = ExtResource("9_buildbar")
+build_manager = NodePath("../../Building")
