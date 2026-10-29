@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -14,6 +14,8 @@
 [ext_resource type="Script" path="res://scripts/building/terminal_walls.gd" id="12_walls"]
 [ext_resource type="Script" path="res://scripts/building/tools/wall_tool.gd" id="13_walltool"]
 [ext_resource type="Script" path="res://scripts/building/tools/door_tool.gd" id="14_doortool"]
+[ext_resource type="Script" path="res://scripts/building/terminal_zones.gd" id="15_zones"]
+[ext_resource type="Script" path="res://scripts/building/tools/zone_tool.gd" id="16_zonetool"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -53,6 +55,10 @@ script = ExtResource("10_floor")
 [node name="TerminalWalls" type="Node3D" parent="."]
 script = ExtResource("12_walls")
 
+[node name="TerminalZones" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
+script = ExtResource("15_zones")
+terminal_floor = NodePath("../TerminalFloor")
+
 [node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label", "terminal_floor")]
 script = ExtResource("6_highlight")
 debug_label = NodePath("../DebugUI/TileLabel")
@@ -87,6 +93,24 @@ script = ExtResource("14_doortool")
 tool_name = "Doors"
 shortcut = 78
 terminal_walls = NodePath("../../TerminalWalls")
+
+[node name="LandsideTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
+script = ExtResource("16_zonetool")
+tool_name = "Landside"
+zone = 1
+terminal_zones = NodePath("../../TerminalZones")
+
+[node name="SecurityTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
+script = ExtResource("16_zonetool")
+tool_name = "Security"
+zone = 2
+terminal_zones = NodePath("../../TerminalZones")
+
+[node name="AirsideTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
+script = ExtResource("16_zonetool")
+tool_name = "Airside"
+zone = 3
+terminal_zones = NodePath("../../TerminalZones")
 
 [node name="TestCubeTool" type="Node3D" parent="Building"]
 script = ExtResource("8_cube")
