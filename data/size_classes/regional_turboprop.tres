@@ -11,5 +11,6 @@ stand_size_tiles = Vector2i(40, 50)
 max_wingspan = 30.0
 runway_length_needed = 1400
 runway_class = "small"
+taxiway_class = "small"
 unlock_stage = "start"
 example_types = "ATR 72, Dash 8 Q400"

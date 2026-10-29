@@ -1,8 +1,9 @@
 extends MeshInstance3D
 ## Debug overlay for the route graph (checklist step 17), toggled with F4 and
-## shown while a taxiway tool is in use. Draws every edge as a line (cyan for
-## taxiways, orange for runways) and every node as a cross: red at runway
-## thresholds, yellow where a taxiway joins a runway, white elsewhere. Lines
+## shown while a taxiway or stand tool is in use. Draws every edge as a line
+## (cyan for taxiways, orange for runways, green for stand lead-ins) and every
+## node as a cross: red at runway thresholds, yellow where a taxiway joins a
+## runway, magenta at a stand's stop bar, white elsewhere. Lines
 ## are drawn on top of everything and stay one pixel wide at any zoom.
 ## Redrawn only when the graph changes and the overlay is shown.
 
@@ -15,6 +16,8 @@ const RUNWAY_COLOR := Color(1.0, 0.6, 0.2)
 const NODE_COLOR := Color(1, 1, 1)
 const RUNWAY_END_COLOR := Color(1.0, 0.25, 0.25)
 const RUNWAY_JOIN_COLOR := Color(1.0, 0.9, 0.2)
+const STAND_COLOR := Color(0.35, 1.0, 0.45)
+const STAND_NODE_COLOR := Color(1.0, 0.35, 1.0)
 
 ## The RouteGraph node (route_graph.gd).
 @export var route_graph: Node
@@ -79,12 +82,18 @@ func _redraw() -> void:
 	var up := Vector3.UP * LIFT
 	_immediate.surface_begin(Mesh.PRIMITIVE_LINES)
 	for edge: Dictionary in route_graph.edges.values():
-		var color := RUNWAY_COLOR if edge.kind == "runway" else TAXIWAY_COLOR
+		var color := TAXIWAY_COLOR
+		if edge.kind == "runway":
+			color = RUNWAY_COLOR
+		elif edge.kind == "stand":
+			color = STAND_COLOR
 		_line(route_graph.nodes[edge.a].position + up, route_graph.nodes[edge.b].position + up, color)
 	for node: Dictionary in route_graph.nodes.values():
 		var color := NODE_COLOR
 		if node.runway_end != "":
 			color = RUNWAY_END_COLOR
+		elif node.stand_id != 0:
+			color = STAND_NODE_COLOR
 		elif node.on_runway and node.on_taxiway:
 			color = RUNWAY_JOIN_COLOR
 		var p: Vector3 = node.position + up

@@ -13,11 +13,14 @@ extends Node
 ## Nodes closer than MERGE_DISTANCE are merged, which absorbs the half metre
 ## between centrelines of odd and even widths. Edges join neighbouring nodes
 ## along each centreline. Runway thresholds are marked with their designator.
+## Each stand (checklist step 18) adds its lead-in line, from the stop bar out
+## through the entry edge, which joins only taxiways: it is extended to the
+## centreline of the taxiway in front. The stop bar node carries the stand ID.
 ##
 ## Node: {id, position (Vector3), runway_end ("09" or ""), on_runway, on_taxiway,
-##        edges (edge IDs)}
-## Edge: {id, a, b (node IDs), length, kind ("runway" or "taxiway"),
-##        source_id (runway or taxiway ID), size_class}
+##        on_stand, stand_id (0 if none), edges (edge IDs)}
+## Edge: {id, a, b (node IDs), length, kind ("runway", "taxiway" or "stand"),
+##        source_id (runway, taxiway or stand ID), size_class}
 ## find_path() gives the shortest route between two nodes. Node and edge IDs
 ## are renumbered on every rebuild, so keep positions or runway designators,
 ## not IDs, across graph_changed.
@@ -33,6 +36,8 @@ const SAME_POINT := 0.01
 @export var runways: Node3D
 ## The Taxiways node (taxiways.gd).
 @export var taxiways: Node3D
+## The Stands node (stands.gd).
+@export var stands: Node3D
 
 ## Node ID -> node Dictionary
 var nodes := {}
@@ -52,6 +57,9 @@ func _ready() -> void:
 	if taxiways:
 		taxiways.taxiway_added.connect(_on_changed.unbind(1))
 		taxiways.taxiway_removed.connect(_on_changed.unbind(1))
+	if stands:
+		stands.stand_added.connect(_on_changed.unbind(1))
+		stands.stand_removed.connect(_on_changed.unbind(1))
 	rebuild()
 
 
@@ -85,6 +93,14 @@ func nearest_node(position: Vector3) -> int:
 func find_runway_end(designator: String) -> int:
 	for node: Dictionary in nodes.values():
 		if node.runway_end == designator:
+			return node.id
+	return -1
+
+
+## The node at a stand's stop bar, or -1.
+func find_stand(stand_id: int) -> int:
+	for node: Dictionary in nodes.values():
+		if node.stand_id == stand_id:
 			return node.id
 	return -1
 
@@ -146,8 +162,10 @@ func rebuild() -> void:
 			var node_id := _node_at(_point(line, u))
 			if line.kind == "runway":
 				nodes[node_id].on_runway = true
-			else:
+			elif line.kind == "taxiway":
 				nodes[node_id].on_taxiway = true
+			else:
+				nodes[node_id].on_stand = true
 			if previous >= 0 and previous != node_id:
 				_add_edge(previous, node_id, line)
 			previous = node_id
@@ -159,13 +177,19 @@ func rebuild() -> void:
 				var node_id := _find_node_near(runway_end.position)
 				if node_id >= 0:
 					nodes[node_id].runway_end = runway_end.designator
+	if stands:
+		for stand: RefCounted in stands.get_all():
+			var node_id := _find_node_near(stand.stop)
+			if node_id >= 0:
+				nodes[node_id].stand_id = stand.id
 
 	for node: Dictionary in nodes.values():
 		_astar.add_point(node.id, node.position)
 	for edge: Dictionary in edges.values():
 		_astar.connect_points(edge.a, edge.b)
-	print("ROUTE GRAPH | %d nodes, %d edges from %d runways and %d taxiways" % [nodes.size(), edges.size(),
-		runways.get_count() if runways else 0, taxiways.get_count() if taxiways else 0])
+	print("ROUTE GRAPH | %d nodes, %d edges from %d runways, %d taxiways and %d stands" % [nodes.size(), edges.size(),
+		runways.get_count() if runways else 0, taxiways.get_count() if taxiways else 0,
+		stands.get_count() if stands else 0])
 	graph_changed.emit()
 
 
@@ -183,6 +207,12 @@ func _collect_lines() -> Array:
 			var def := TaxiwayCatalog.get_def(taxiway.def_id)
 			lines.append(_make_line("taxiway", taxiway.id, def.size_class if def else "",
 				taxiway.a, taxiway.b, taxiway.width, true))
+	if stands:
+		# No width, so a taxiway has to pass in front of the lead-in to join it.
+		for stand: RefCounted in stands.get_all():
+			var def := StandCatalog.get_def(stand.def_id)
+			lines.append(_make_line("stand", stand.id, def.get_taxiway_class() if def else "",
+				stand.stop, stand.entry, 0.0, true))
 	return lines
 
 
@@ -200,6 +230,9 @@ func _make_line(kind: String, source_id: int, size_class: String, a: Vector3, b:
 
 ## Adds the stations where two lines meet, if they do.
 func _join(s: Dictionary, t: Dictionary, s_stations: Array, t_stations: Array) -> void:
+	# A stand's lead-in only joins taxiways, never a runway or another stand.
+	if (s.kind == "stand" and t.kind != "taxiway") or (t.kind == "stand" and s.kind != "taxiway"):
+		return
 	if s.along_x != t.along_x:
 		# Perpendicular: they meet at (t.f along s, s.f along t). Each may reach
 		# the other through the other's paving, but only taxiways are extended.
@@ -234,7 +267,7 @@ func _node_at(position: Vector3) -> int:
 		return existing
 	var id := nodes.size() + 1
 	nodes[id] = {"id": id, "position": position, "runway_end": "", "on_runway": false, "on_taxiway": false,
-		"edges": []}
+		"on_stand": false, "stand_id": 0, "edges": []}
 	var cell := _cell(position)
 	if not _cells.has(cell):
 		_cells[cell] = []

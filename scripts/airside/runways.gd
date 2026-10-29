@@ -39,6 +39,8 @@ const EDGE_INSET := 1.0
 
 ## The TerminalFloor node (terminal_floor.gd). Runways can't go over floor.
 @export var terminal_floor: Node3D
+## Optional Stands node (stands.gd). Runways can't go over stands (checklist step 18).
+@export var stands: Node3D
 
 var _runways := {}
 var _next_id := 1
@@ -153,6 +155,8 @@ func check_placement(def: Resource, start: Vector2i, end: Vector2i, ignore_id :=
 			return "Overlaps another runway"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
 		return "Blocked by terminal floor"
+	if stands and not stands.get_stands_in(rect).is_empty():
+		return "Blocked by a stand"
 	return ""
 
 

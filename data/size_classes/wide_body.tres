@@ -11,5 +11,6 @@ stand_size_tiles = Vector2i(80, 80)
 max_wingspan = 65.0
 runway_length_needed = 3000
 runway_class = "large"
+taxiway_class = "large"
 unlock_stage = "late"
 example_types = "787-9, A330-300, A350-900"

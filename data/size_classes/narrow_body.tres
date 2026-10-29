@@ -11,5 +11,6 @@ stand_size_tiles = Vector2i(50, 60)
 max_wingspan = 36.0
 runway_length_needed = 2400
 runway_class = "medium"
+taxiway_class = "medium"
 unlock_stage = "mid"
 example_types = "A320, 737-800, A321neo, 737 MAX 8"

@@ -33,6 +33,8 @@ const CENTRELINE_WIDTH := 0.5
 @export var terminal_floor: Node3D
 ## The Runways node (runways.gd). Taxiways may cross runways but not run along inside them.
 @export var runways: Node3D
+## Optional Stands node (stands.gd). Taxiways can't go over stands (checklist step 18).
+@export var stands: Node3D
 
 var _taxiways := {}
 var _next_id := 1
@@ -119,6 +121,8 @@ func check_placement(def: Resource, start: Vector2i, end: Vector2i) -> String:
 				return "Taxiways can cross a runway, not run along it"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
 		return "Blocked by terminal floor"
+	if stands and not stands.get_stands_in(rect).is_empty():
+		return "Blocked by a stand"
 	return ""
 
 

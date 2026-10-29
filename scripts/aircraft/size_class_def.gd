@@ -26,6 +26,9 @@ const UNLOCK_STAGES := ["start", "early", "mid", "late", "endgame"]
 @export var runway_length_needed := 1200
 ## Runway size class (RunwayDef.SIZE_CLASSES) that can handle this class.
 @export_enum("small", "medium", "large") var runway_class := "small"
+## Taxiway size class (TaxiwayDef.SIZE_CLASSES) a stand for this class needs
+## in front of it (checklist step 18).
+@export_enum("small", "medium", "large") var taxiway_class := "small"
 ## When the class unlocks in career mode, one of UNLOCK_STAGES.
 @export_enum("start", "early", "mid", "late", "endgame") var unlock_stage := "start"
 ## Example types, shown in tooltips.

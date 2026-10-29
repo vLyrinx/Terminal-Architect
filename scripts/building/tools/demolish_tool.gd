@@ -1,9 +1,10 @@
 extends "res://scripts/building/build_tool.gd"
 ## Demolish tool (checklist step 15): drag a rectangle to clear everything in it.
 ##
-##   Left drag (or click)   remove runways, taxiways, objects, walls, doors and floor in the rectangle
-## Any runway or taxiway piece the rectangle touches goes first, whole (one
-## DeleteRunwayCommand or DeleteTaxiwayCommand each, checklist steps 16 and 17).
+##   Left drag (or click)   remove runways, taxiways, stands, objects, walls, doors and floor in the rectangle
+## Any stand, runway or taxiway piece the rectangle touches goes first, whole
+## (one DeleteStandCommand, DeleteRunwayCommand or DeleteTaxiwayCommand each,
+## checklist steps 16 to 18).
 ## Objects go next (one DeleteObjectCommand each), then every wall piece on
 ## the rectangle's grid lines, edges included (one SetWallsCommand), then the
 ## floor (one SetFloorCommand), which also clears its zones. Each part refunds
@@ -16,6 +17,7 @@ const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_co
 const SetFloorCommandScript := preload("res://scripts/core/commands/set_floor_command.gd")
 const DeleteRunwayCommandScript := preload("res://scripts/core/commands/delete_runway_command.gd")
 const DeleteTaxiwayCommandScript := preload("res://scripts/core/commands/delete_taxiway_command.gd")
+const DeleteStandCommandScript := preload("res://scripts/core/commands/delete_stand_command.gd")
 const GHOST_HEIGHT := 0.3
 const NO_TILE := Vector2i(-1, -1)
 
@@ -29,6 +31,8 @@ const NO_TILE := Vector2i(-1, -1)
 @export var runways: Node3D
 ## The Taxiways node (taxiways.gd).
 @export var taxiways: Node3D
+## The Stands node (stands.gd).
+@export var stands: Node3D
 ## The CommandRunner node (command_runner.gd).
 @export var command_runner: Node
 
@@ -91,7 +95,9 @@ func release(tile: Vector2i, in_plot: bool) -> void:
 	_dragging = false
 	var rect := BuildGrid.rect_from_tiles(_start, _end)
 	var p := _preview(rect)
-	if p.runways.size() + p.taxiways.size() + p.objects.size() + p.walls + p.floor > 0:
+	if p.stands.size() + p.runways.size() + p.taxiways.size() + p.objects.size() + p.walls + p.floor > 0:
+		for id: int in p.stands:
+			command_runner.submit(DeleteStandCommandScript.new(id))
 		for id: int in p.runways:
 			command_runner.submit(DeleteRunwayCommandScript.new(id))
 		for id: int in p.taxiways:
@@ -102,8 +108,8 @@ func release(tile: Vector2i, in_plot: bool) -> void:
 			command_runner.submit(SetWallsCommandScript.new(_wall_runs(rect), false, get_floor()))
 		if p.floor > 0:
 			command_runner.submit(SetFloorCommandScript.new(rect, false, get_floor()))
-		print("BUILD | demolished %d runways, %d taxiways, %d objects, %d walls, %d floor tiles in %d x %d" % [
-			p.runways.size(), p.taxiways.size(), p.objects.size(), p.walls, p.floor, rect.size.x, rect.size.y])
+		print("BUILD | demolished %d stands, %d runways, %d taxiways, %d objects, %d walls, %d floor tiles in %d x %d" % [
+			p.stands.size(), p.runways.size(), p.taxiways.size(), p.objects.size(), p.walls, p.floor, rect.size.x, rect.size.y])
 	_hover_tile = tile
 	_hover_in_plot = in_plot
 	_update_ghost()
@@ -115,7 +121,7 @@ func cancel_drag() -> void:
 
 
 func get_hint() -> String:
-	return "Drag: remove runways, taxiways, objects, walls and floor   Refunds %d%%   Right click / Esc: cancel" % \
+	return "Drag: remove runways, taxiways, stands, objects, walls and floor   Refunds %d%%   Right click / Esc: cancel" % \
 		roundi(Money.settings.sale_refund * 100.0)
 
 
@@ -123,7 +129,7 @@ func get_cost_text() -> String:
 	return "Refund %d%%" % roundi(Money.settings.sale_refund * 100.0)
 
 
-## What demolishing rect would remove: {"runways", "taxiways": IDs, "objects":
+## What demolishing rect would remove: {"stands", "runways", "taxiways": IDs, "objects":
 ## object IDs, "walls": wall pieces, "floor": floor tiles, "refund": money back}.
 ## Counts use whole-row and per-object checks rather than visiting every tile,
 ## so dragging across a large part of the 4.5 km plot stays smooth. The refund
@@ -147,7 +153,10 @@ func _preview(rect: Rect2i) -> Dictionary:
 	var taxiway_ids: Array[int] = taxiways.get_taxiways_in(rect) if taxiways else ([] as Array[int])
 	for id in taxiway_ids:
 		refund += DeleteTaxiwayCommandScript.new(id).preview(command_runner)
-	return {"runways": runway_ids, "taxiways": taxiway_ids, "objects": object_ids, "walls": walls, "floor": tiles, "refund": refund}
+	var stand_ids: Array[int] = stands.get_stands_in(rect) if stands else ([] as Array[int])
+	for id in stand_ids:
+		refund += DeleteStandCommandScript.new(id).preview(command_runner)
+	return {"stands": stand_ids, "runways": runway_ids, "taxiways": taxiway_ids, "objects": object_ids, "walls": walls, "floor": tiles, "refund": refund}
 
 
 ## Every grid line inside rect, edges included, as wall runs.
@@ -175,6 +184,8 @@ func _update_ghost() -> void:
 	if _dragging:
 		var p := _preview(rect)
 		var parts: Array[String] = []
+		if p.stands.size() > 0:
+			parts.append("%d stand%s" % [p.stands.size(), "s" if p.stands.size() > 1 else ""])
 		if p.runways.size() > 0:
 			parts.append("%d runway%s" % [p.runways.size(), "s" if p.runways.size() > 1 else ""])
 		if p.taxiways.size() > 0:
