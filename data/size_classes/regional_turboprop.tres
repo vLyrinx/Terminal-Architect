@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SizeClassDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/size_class_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"regional_turboprop"
+display_name = "Regional turboprop"
+stand_class = "small"
+stand_size_tiles = Vector2i(40, 50)
+max_wingspan = 30.0
+runway_length_needed = 1400
+runway_class = "small"
+unlock_stage = "start"
+example_types = "ATR 72, Dash 8 Q400"

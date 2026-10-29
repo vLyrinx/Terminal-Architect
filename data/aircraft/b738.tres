@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AircraftTypeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/aircraft_type_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"b738"
+display_name = "737-800"
+manufacturer = "Boeing"
+icao_code = "B738"
+size_class = "narrow_body"
+seats = 189
+wingspan = 35.79
+length = 39.47
+height = 12.55
+engine_count = 2
+engine_type = "jet"
+runway_length_needed = 2300
+turnaround_minutes = 40

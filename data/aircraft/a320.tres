@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AircraftTypeDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/aircraft_type_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"a320"
+display_name = "A320-200"
+manufacturer = "Airbus"
+icao_code = "A320"
+size_class = "narrow_body"
+seats = 180
+wingspan = 35.8
+length = 37.57
+height = 11.76
+engine_count = 2
+engine_type = "jet"
+runway_length_needed = 2100
+turnaround_minutes = 40

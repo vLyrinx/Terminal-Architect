@@ -23,6 +23,7 @@ ObjectCatalog="*res://scripts/objects/object_catalog.gd"
 Money="*res://scripts/economy/money.gd"
 RunwayCatalog="*res://scripts/airside/runway_catalog.gd"
 TaxiwayCatalog="*res://scripts/airside/taxiway_catalog.gd"
+AircraftCatalog="*res://scripts/aircraft/aircraft_catalog.gd"
 
 [display]
 

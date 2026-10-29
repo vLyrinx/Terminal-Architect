@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SizeClassDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/size_class_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"wide_body"
+display_name = "Wide-body"
+stand_class = "large"
+stand_size_tiles = Vector2i(80, 80)
+max_wingspan = 65.0
+runway_length_needed = 3000
+runway_class = "large"
+unlock_stage = "late"
+example_types = "787-9, A330-300, A350-900"

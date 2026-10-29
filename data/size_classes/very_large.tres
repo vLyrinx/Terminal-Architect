@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SizeClassDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/size_class_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"very_large"
+display_name = "Very large"
+stand_class = "large_extra"
+stand_size_tiles = Vector2i(100, 90)
+max_wingspan = 80.0
+runway_length_needed = 3500
+runway_class = "large"
+unlock_stage = "endgame"
+example_types = "777-300ER, 747-8, A380"

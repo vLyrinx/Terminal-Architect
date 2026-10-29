@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SizeClassDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/aircraft/size_class_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"narrow_body"
+display_name = "Narrow-body"
+stand_class = "medium"
+stand_size_tiles = Vector2i(50, 60)
+max_wingspan = 36.0
+runway_length_needed = 2400
+runway_class = "medium"
+unlock_stage = "mid"
+example_types = "A320, 737-800, A321neo, 737 MAX 8"
