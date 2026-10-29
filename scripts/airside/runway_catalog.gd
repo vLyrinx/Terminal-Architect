@@ -28,8 +28,8 @@ func load_all() -> void:
 			continue
 		if def.id == &"":
 			def.id = StringName(file.get_basename())
-		if def.width < 1 or def.min_length < 1 or def.max_length < def.min_length:
-			push_warning("RunwayCatalog: %s needs a width and a valid length range" % file)
+		if def.width < 2 or def.width % 2 != 0 or def.min_length < 1 or def.max_length < def.min_length:
+			push_warning("RunwayCatalog: %s needs an even width and a valid length range" % file)
 			continue
 		_defs[def.id] = def
 		_ordered.append(def)

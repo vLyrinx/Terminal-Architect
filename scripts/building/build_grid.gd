@@ -15,6 +15,9 @@ signal grid_visibility_changed(grid_visible: bool)
 const TILE_SIZE := 1.0
 ## Plot size in tiles: 4.5 x 2 km, room for a real-length runway (checklist step 16).
 const PLOT_TILES := Vector2i(4500, 2000)
+## Runways and taxiways snap to every this many tiles (10 m): the major grid
+## lines, which the plot size is a multiple of.
+const AIRSIDE_SNAP := 10
 ## Height of one floor in metres (used once multiple floors exist).
 const FLOOR_HEIGHT := 4.0
 const ACTION_TOGGLE_GRID := "toggle_grid"
@@ -80,6 +83,19 @@ func world_to_corner(world_pos: Vector3) -> Vector2i:
 
 func clamp_corner_to_plot(corner: Vector2i) -> Vector2i:
 	return Vector2i(clampi(corner.x, 0, PLOT_TILES.x), clampi(corner.y, 0, PLOT_TILES.y))
+
+
+## Nearest corner on the airside grid (every AIRSIDE_SNAP tiles, the major grid
+## lines on the ground), kept on the plot. Runways and taxiways start and end
+## on it, so they line up with each other and with gates (checklist step 17).
+func snap_to_airside(corner: Vector2i) -> Vector2i:
+	var on_grid := Vector2i(roundi(float(corner.x) / AIRSIDE_SNAP) * AIRSIDE_SNAP,
+		roundi(float(corner.y) / AIRSIDE_SNAP) * AIRSIDE_SNAP)
+	return clamp_corner_to_plot(on_grid)
+
+
+func is_on_airside_grid(corner: Vector2i) -> bool:
+	return corner.x % AIRSIDE_SNAP == 0 and corner.y % AIRSIDE_SNAP == 0
 
 
 ## Nearest tile edge to a world position: {"corner": Vector2i, "horizontal": bool}.

@@ -20,6 +20,8 @@ const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_co
 const SetDoorCommandScript := preload("res://scripts/core/commands/set_door_command.gd")
 const PlaceRunwayCommandScript := preload("res://scripts/core/commands/place_runway_command.gd")
 const DeleteRunwayCommandScript := preload("res://scripts/core/commands/delete_runway_command.gd")
+const PlaceTaxiwayCommandScript := preload("res://scripts/core/commands/place_taxiway_command.gd")
+const DeleteTaxiwayCommandScript := preload("res://scripts/core/commands/delete_taxiway_command.gd")
 ## Oldest commands are dropped from the history beyond this.
 const MAX_HISTORY := 500
 
@@ -34,6 +36,8 @@ const MAX_HISTORY := 500
 @export var terminal_zones: Node3D
 ## The Runways node (runways.gd).
 @export var runways: Node3D
+## The Taxiways node (taxiways.gd).
+@export var taxiways: Node3D
 
 ## Commands that ran, oldest first.
 var history: Array = []
@@ -83,6 +87,10 @@ static func command_from_dict(data: Dictionary) -> RefCounted:
 			command = PlaceRunwayCommandScript.new()
 		"delete_runway":
 			command = DeleteRunwayCommandScript.new()
+		"place_taxiway":
+			command = PlaceTaxiwayCommandScript.new()
+		"delete_taxiway":
+			command = DeleteTaxiwayCommandScript.new()
 		_:
 			return null
 	command.load_dict(data)

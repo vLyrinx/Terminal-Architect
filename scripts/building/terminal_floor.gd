@@ -34,6 +34,8 @@ const ROOF_SIDE_COLOR := Color(0.66, 0.69, 0.73)
 @export var placed_objects: Node3D
 ## Optional Runways node (runways.gd): floor is never laid on a runway (checklist step 16).
 @export var runways: Node3D
+## Optional Taxiways node (taxiways.gd): nor on a taxiway (checklist step 17).
+@export var taxiways: Node3D
 
 ## Per floor index: one byte per plot tile, 1 = floor.
 var _tiles := {}
@@ -89,7 +91,7 @@ func count_changes(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 	rect = _clip_to_plot(rect)
 	var area := rect.get_area()
 	if not _tiles.has(floor_index):
-		return area - (runways.count_tiles_in(rect) if runways else 0) if filled else 0
+		return area - _count_paved(rect) if filled else 0
 	var tiles: PackedByteArray = _tiles[floor_index]
 	var floored := 0
 	var protected := 0
@@ -99,9 +101,9 @@ func count_changes(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 			floored += tiles[row + x]
 			if not filled and tiles[row + x] == 1 and _has_object(Vector2i(x, y), floor_index):
 				protected += 1
-	if filled and runways:
-		return area - floored - runways.count_tiles_in(rect)  # runway tiles never have floor
-	return area - floored if filled else floored - protected
+	if filled:
+		return area - floored - _count_paved(rect)  # paved tiles never have floor
+	return floored - protected
 
 
 ## How many tiles in rect have floor.
@@ -135,17 +137,13 @@ func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 		return 0
 	var tiles := _get_tiles(floor_index)
 	var value := 1 if filled else 0
-	# Only the few runways overlapping rect are checked per tile.
-	var runway_rects: Array[Rect2i] = []
-	if filled and runways:
-		for id: int in runways.get_runways_in(rect):
-			runway_rects.append(runways.get_runway(id).rect)
+	# Only the few runways and taxiways overlapping rect are checked per tile.
+	var paved: Array[Rect2i] = _paved_rects(rect) if filled else ([] as Array[Rect2i])
 	var changed := 0
 	for y in range(rect.position.y, rect.end.y):
 		var row := y * BuildGrid.PLOT_TILES.x
 		for x in range(rect.position.x, rect.end.x):
-			if not runway_rects.is_empty() and runway_rects.any(
-					func(r: Rect2i) -> bool: return r.has_point(Vector2i(x, y))):
+			if not paved.is_empty() and paved.any(func(r: Rect2i) -> bool: return r.has_point(Vector2i(x, y))):
 				continue
 			if tiles[row + x] != value and (filled or not _has_object(Vector2i(x, y), floor_index)):
 				tiles[row + x] = value
@@ -205,6 +203,34 @@ func _get_tiles(floor_index: int) -> PackedByteArray:
 		tiles.resize(BuildGrid.get_tile_count())
 		_tiles[floor_index] = tiles
 	return _tiles[floor_index]
+
+
+## Runway and taxiway rectangles overlapping rect (they may overlap each other).
+func _paved_rects(rect: Rect2i) -> Array[Rect2i]:
+	var rects: Array[Rect2i] = []
+	if runways:
+		rects.append_array(runways.get_rects_in(rect))
+	if taxiways:
+		rects.append_array(taxiways.get_rects_in(rect))
+	return rects
+
+
+## How many tiles of rect are paved, each counted once where pavings overlap.
+func _count_paved(rect: Rect2i) -> int:
+	var rects := _paved_rects(rect)
+	if rects.is_empty():
+		return 0
+	if rects.size() == 1:
+		return rects[0].intersection(rect).get_area()
+	var mask := PackedByteArray()
+	mask.resize(rect.get_area())
+	for r in rects:
+		var part := r.intersection(rect)
+		for y in range(part.position.y, part.end.y):
+			var row := (y - rect.position.y) * rect.size.x - rect.position.x
+			for x in range(part.position.x, part.end.x):
+				mask[row + x] = 1
+	return mask.count(1)
 
 
 func _has_object(tile: Vector2i, floor_index: int) -> bool:

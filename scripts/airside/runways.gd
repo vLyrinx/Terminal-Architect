@@ -84,6 +84,19 @@ func get_runways_in(rect: Rect2i) -> Array[int]:
 	return ids
 
 
+## Paved rectangles overlapping rect.
+func get_rects_in(rect: Rect2i) -> Array[Rect2i]:
+	var rects: Array[Rect2i] = []
+	for runway: RunwayScript in _runways.values():
+		if runway.rect.intersects(rect):
+			rects.append(runway.rect)
+	return rects
+
+
+func get_all() -> Array:
+	return _runways.values()
+
+
 ## How many tiles of rect are paved runway.
 func count_tiles_in(rect: Rect2i) -> int:
 	var count := 0
@@ -107,8 +120,8 @@ func get_ends() -> Array[Dictionary]:
 
 
 ## Tiles a runway of this size would cover between two centreline corners.
-## The centreline is on the corner line for even widths and half a tile
-## further for odd ones (45 m), so the paving always covers whole tiles.
+## Widths are even, so the centreline is on the dragged grid line and both
+## edges are on whole tiles.
 static func footprint(def: Resource, start: Vector2i, end: Vector2i) -> Rect2i:
 	var lo := start.min(end)
 	var length := (end - start).abs()
@@ -125,6 +138,8 @@ func check_placement(def: Resource, start: Vector2i, end: Vector2i, ignore_id :=
 		return "Unknown runway size"
 	if start.x != end.x and start.y != end.y:
 		return "Runways run straight along the grid"
+	if not BuildGrid.is_on_airside_grid(start) or not BuildGrid.is_on_airside_grid(end):
+		return "Runways start and end on the %d m grid" % BuildGrid.AIRSIDE_SNAP
 	var length := maxi(absi(end.x - start.x), absi(end.y - start.y))
 	if length < def.min_length:
 		return "Too short: a %s needs at least %s m" % [def.display_name.to_lower(), _number(def.min_length)]

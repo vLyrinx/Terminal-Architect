@@ -56,7 +56,7 @@ func _ready() -> void:
 	var large := RunwayCatalog.get_def(&"large")
 	_expect("three runway sizes load, smallest first", RunwayCatalog.get_all().size() == 3
 		and RunwayCatalog.get_all()[0] == small and RunwayCatalog.get_all()[2] == large)
-	_expect("widths are 30, 45 and 60 m", small.width == 30 and medium.width == 45 and large.width == 60)
+	_expect("widths are 30, 46 and 60 m (even)", small.width == 30 and medium.width == 46 and large.width == 60)
 	_expect("medium handles small and medium aircraft, not large",
 		medium.handles("small") and medium.handles("medium") and not medium.handles("large"))
 	_expect("a large runway fits on the plot east-west",
@@ -70,13 +70,13 @@ func _ready() -> void:
 	_expect("medium runway 2,000 m is built", _runner.submit(place) and _runways.get_count() == 1)
 	var runway: RefCounted = _runways.get_runway(place.runway_id)
 	_expect("it costs 2,000 m x the price per metre", before - Money.balance == 2000 * medium.cost_per_metre)
-	_expect("length 2,000 m, width 45 m", runway.length == 2000 and runway.width == 45)
-	_expect("footprint covers 2,000 x 45 tiles", runway.rect == Rect2i(1000, 978, 2000, 45))
+	_expect("length 2,000 m, width 46 m", runway.length == 2000 and runway.width == 46)
+	_expect("footprint covers 2,000 x 46 tiles, centred on the grid line", runway.rect == Rect2i(1000, 977, 2000, 46))
 	var a: Dictionary = runway.ends[0]
 	var b: Dictionary = runway.ends[1]
 	var west := BuildGrid.tile_corner_to_world(start)
 	_expect("end A is the west threshold, on the centreline",
-		a.position.is_equal_approx(Vector3(west.x, 0.0, west.z + 0.5)))
+		a.position.is_equal_approx(Vector3(west.x, 0.0, west.z)))
 	_expect("end A faces east (heading 90, runway 09)", a.direction.is_equal_approx(Vector3.RIGHT)
 		and is_equal_approx(a.heading, 90.0) and a.designator == "09")
 	_expect("end B faces west (heading 270, runway 27)", b.direction.is_equal_approx(Vector3.LEFT)
@@ -96,7 +96,10 @@ func _ready() -> void:
 	_expect("too long is refused", not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(100, 100), Vector2i(2000, 100)))
 		and _last_failed.error.begins_with("Too long"))
 	_expect("diagonal is refused", not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(100, 100), Vector2i(1400, 600))))
-	_expect("off the plot is refused", not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(10, 5), Vector2i(1310, 5)))
+	_expect("off the 10 m grid is refused",
+		not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(105, 100), Vector2i(1405, 100)))
+		and _last_failed.error.begins_with("Runways start and end on the 10 m grid"))
+	_expect("off the plot is refused", not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(10, 10), Vector2i(1310, 10)))
 		and _last_failed.error == "Doesn't fit on the plot")
 	_expect("overlapping is refused", not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(2000, 500), Vector2i(2000, 1700)))
 		and _last_failed.error == "Overlaps another runway")
@@ -109,10 +112,10 @@ func _ready() -> void:
 		ns_runway.ends[0].designator == "36" and ns_runway.ends[1].designator == "18")
 
 	# Floor and walls
-	# 20 x 40 floor rect; its last 22 rows (y 978 to 999) are runway.
+	# 20 x 40 floor rect; its last 23 rows (y 977 to 999) are runway.
 	var floor_rect := Rect2i(1990, 960, 20, 40)
-	_expect("floor preview skips runway tiles (360 of 800)", _floor.count_changes(floor_rect, true) == 360)
-	_expect("floor is not laid on a runway", _floor.set_rect(floor_rect, true) == 360)
+	_expect("floor preview skips runway tiles (340 of 800)", _floor.count_changes(floor_rect, true) == 340)
+	_expect("floor is not laid on a runway", _floor.set_rect(floor_rect, true) == 340)
 	_expect("no floor ends up under the runway", _floor.count_floor_tiles(runway.rect) == 0)
 	_expect("a runway over floor is refused",
 		not _runner.submit(PlaceRunwayCmd.new(&"small", Vector2i(1500, 960), Vector2i(2800, 960)))

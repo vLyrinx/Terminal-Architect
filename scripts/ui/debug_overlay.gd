@@ -11,6 +11,8 @@ const REFRESH_TIME := 0.25
 
 ## The TileHighlight node (tile_highlighter.gd), for the hovered tile.
 @export var tile_highlighter: Node3D
+## Optional RouteGraph node (route_graph.gd), for its node and edge counts.
+@export var route_graph: Node
 
 var _label: Label
 var _refresh_timer := 0.0
@@ -64,6 +66,9 @@ func _process(delta: float) -> void:
 		GameClock.tick_count,
 		GameClock.ticks_last_second,
 	]
+	if route_graph:
+		_label.text += "\nRoute graph %d nodes, %d edges (F4 to draw)" % [
+			route_graph.get_node_count(), route_graph.get_edge_count()]
 
 
 func _on_hovered_tile_changed(tile: Vector2i, in_plot: bool) -> void:

@@ -3,8 +3,9 @@ extends "res://scripts/building/build_tool.gd"
 ## runway's direction and length.
 ##
 ##   Left drag    lay out the runway from the start corner along X or Z
-## The runway snaps to the grid and to whichever axis the mouse has moved
-## further along, in steps of LENGTH_STEP metres, and stops at the size's
+## The runway starts on the 10 m airside grid (BuildGrid.AIRSIDE_SNAP, the
+## major grid lines), follows whichever axis the mouse has moved
+## further along in steps of the same 10 m, and stops at the size's
 ## longest length. The ghost is green when it can be built and red when not;
 ## the label shows the designators, length, width and price, or why it can't
 ## be built (too short, over floor or walls, overlapping, not enough money).
@@ -12,8 +13,9 @@ extends "res://scripts/building/build_tool.gd"
 
 const PlaceRunwayCommandScript := preload("res://scripts/core/commands/place_runway_command.gd")
 const RunwayScript := preload("res://scripts/airside/runway.gd")
-## Runway lengths snap to this many metres.
-const LENGTH_STEP := 10
+const BuildGridScript := preload("res://scripts/building/build_grid.gd")
+## Runway lengths snap to this many metres, so the far end is on the airside grid too.
+const LENGTH_STEP := BuildGridScript.AIRSIDE_SNAP
 const GHOST_HEIGHT := 0.5
 
 ## The Runways node (runways.gd).
@@ -65,7 +67,7 @@ func _process(_delta: float) -> void:
 	var pick := mouse_pick()
 	_has_hover = pick.hit and pick.in_plot
 	if pick.hit and (_has_hover or _dragging):
-		_hover_corner = BuildGrid.clamp_corner_to_plot(BuildGrid.world_to_corner(pick.position))
+		_hover_corner = BuildGrid.snap_to_airside(BuildGrid.world_to_corner(pick.position))
 		if _dragging:
 			_end = _snap_end(_hover_corner)
 	_update_ghost()
@@ -76,7 +78,7 @@ func press(_tile: Vector2i) -> void:
 	if not pick.hit:
 		return
 	_dragging = true
-	_start = BuildGrid.clamp_corner_to_plot(BuildGrid.world_to_corner(pick.position))
+	_start = BuildGrid.snap_to_airside(BuildGrid.world_to_corner(pick.position))
 	_end = _start
 
 

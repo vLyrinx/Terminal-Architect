@@ -1,4 +1,4 @@
-[gd_scene load_steps=37 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -25,6 +25,10 @@
 [ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
 [ext_resource type="Script" path="res://scripts/airside/runways.gd" id="29_runways"]
 [ext_resource type="Script" path="res://scripts/building/tools/runway_tool.gd" id="38_runwaytool"]
+[ext_resource type="Script" path="res://scripts/airside/taxiways.gd" id="39_taxiways"]
+[ext_resource type="Script" path="res://scripts/airside/route_graph.gd" id="40_graph"]
+[ext_resource type="Script" path="res://scripts/debug/route_graph_overlay.gd" id="41_graphoverlay"]
+[ext_resource type="Script" path="res://scripts/building/tools/taxiway_tool.gd" id="42_taxiwaytool"]
 [ext_resource type="Texture2D" path="res://ui/icons/floor.svg" id="30_icon_floor"]
 [ext_resource type="Texture2D" path="res://ui/icons/walls.svg" id="31_icon_walls"]
 [ext_resource type="Texture2D" path="res://ui/icons/doors.svg" id="32_icon_doors"]
@@ -62,10 +66,11 @@ shadow_enabled = true
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("5_ground")
 
-[node name="TerminalFloor" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "runways")]
+[node name="TerminalFloor" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "runways", "taxiways")]
 script = ExtResource("10_floor")
 placed_objects = NodePath("../PlacedObjects")
 runways = NodePath("../Runways")
+taxiways = NodePath("../Taxiways")
 
 [node name="TerminalWalls" type="Node3D" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor")]
 script = ExtResource("12_walls")
@@ -77,13 +82,14 @@ script = ExtResource("17_objects")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_walls = NodePath("../TerminalWalls")
 
-[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "runways")]
+[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "runways", "taxiways")]
 script = ExtResource("18_commands")
 placed_objects = NodePath("../PlacedObjects")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_walls = NodePath("../TerminalWalls")
 terminal_zones = NodePath("../TerminalZones")
 runways = NodePath("../Runways")
+taxiways = NodePath("../Taxiways")
 
 [node name="TerminalZones" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("15_zones")
@@ -92,6 +98,20 @@ terminal_floor = NodePath("../TerminalFloor")
 [node name="Runways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("29_runways")
 terminal_floor = NodePath("../TerminalFloor")
+
+[node name="Taxiways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "runways")]
+script = ExtResource("39_taxiways")
+terminal_floor = NodePath("../TerminalFloor")
+runways = NodePath("../Runways")
+
+[node name="RouteGraph" type="Node" parent="." node_paths=PackedStringArray("runways", "taxiways")]
+script = ExtResource("40_graph")
+runways = NodePath("../Runways")
+taxiways = NodePath("../Taxiways")
+
+[node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
+script = ExtResource("41_graphoverlay")
+route_graph = NodePath("../RouteGraph")
 
 [node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("6_highlight")
@@ -180,7 +200,16 @@ shortcut = 85
 runways = NodePath("../../Runways")
 command_runner = NodePath("../../Commands")
 
-[node name="DemolishTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "runways", "command_runner")]
+[node name="TaxiwayTool" type="Node3D" parent="Building" node_paths=PackedStringArray("taxiways", "runways", "command_runner", "graph_overlay")]
+script = ExtResource("42_taxiwaytool")
+tool_name = "Taxiway"
+shortcut = 84
+taxiways = NodePath("../../Taxiways")
+runways = NodePath("../../Runways")
+command_runner = NodePath("../../Commands")
+graph_overlay = NodePath("../../RouteGraphOverlay")
+
+[node name="DemolishTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "runways", "taxiways", "command_runner")]
 script = ExtResource("28_demolish")
 tool_name = "Demolish"
 menu_category = "demolish"
@@ -189,6 +218,7 @@ placed_objects = NodePath("../../PlacedObjects")
 terminal_floor = NodePath("../../TerminalFloor")
 terminal_walls = NodePath("../../TerminalWalls")
 runways = NodePath("../../Runways")
+taxiways = NodePath("../../Taxiways")
 command_runner = NodePath("../../Commands")
 
 [node name="EditTool" type="Node3D" parent="Building" node_paths=PackedStringArray("placed_objects", "command_runner")]
@@ -231,7 +261,7 @@ offset_bottom = 40.0
 grow_horizontal = 2
 script = ExtResource("25_topbar")
 
-[node name="DebugOverlay" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("tile_highlighter")]
+[node name="DebugOverlay" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("tile_highlighter", "route_graph")]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 48.0
@@ -240,6 +270,7 @@ offset_bottom = 88.0
 mouse_filter = 2
 script = ExtResource("27_debug")
 tile_highlighter = NodePath("../../../TileHighlight")
+route_graph = NodePath("../../../RouteGraph")
 
 [node name="MessageToast" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("command_runner")]
 layout_mode = 0

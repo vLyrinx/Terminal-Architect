@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_economy")
-starting_money = 250000
+starting_money = 10000000
 sale_refund = 0.5
 floor_tile_cost = 25
 wall_cost = 150

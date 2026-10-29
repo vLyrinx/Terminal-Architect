@@ -22,6 +22,7 @@ BuildGrid="*res://scripts/building/build_grid.gd"
 ObjectCatalog="*res://scripts/objects/object_catalog.gd"
 Money="*res://scripts/economy/money.gd"
 RunwayCatalog="*res://scripts/airside/runway_catalog.gd"
+TaxiwayCatalog="*res://scripts/airside/taxiway_catalog.gd"
 
 [display]
 

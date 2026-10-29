@@ -12,7 +12,7 @@ const SIZE_CLASSES := ["small", "medium", "large"]
 @export var display_name := ""
 ## Largest aircraft size class this runway handles (stands use the same classes).
 @export_enum("small", "medium", "large") var size_class := "small"
-## Paved width in metres.
+## Paved width in metres. Must be even, so the centreline is on a grid line.
 @export var width := 30
 ## Shortest and longest length the player can build, in metres.
 @export var min_length := 1200
