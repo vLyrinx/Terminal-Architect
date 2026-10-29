@@ -37,6 +37,7 @@ func load_all() -> void:
 		for type_id: StringName in def.fleet:
 			if AircraftCatalog.get_type(type_id) == null:
 				push_warning("AirlineCatalog: %s fleet has unknown aircraft type '%s'" % [file, type_id])
+		_check_weekly_flights(file, def)
 		_airlines[def.id] = def
 		_ordered.append(def)
 	_ordered.sort_custom(func(a: AirlineDefScript, b: AirlineDefScript) -> bool:
@@ -45,7 +46,27 @@ func load_all() -> void:
 		", ".join(_ordered.map(func(a: AirlineDefScript) -> String:
 			var fleet_text := ", ".join(a.fleet.keys().map(func(t: StringName) -> String:
 				return "%d x %s" % [a.fleet[t], t]))
-			return "%s (%s, %s, fleet %s)" % [a.display_name, a.short_code, a.airline_type, fleet_text]))])
+			return "%s (%s, %s, fleet %s, %d weekly rotations)" % [a.display_name, a.short_code, a.airline_type, fleet_text, a.weekly_flights.size()]))])
+
+
+## Warns about weekly rotations with bad times, types outside the fleet or a
+## ground time shorter than the type's turnaround.
+func _check_weekly_flights(file: String, def: AirlineDefScript) -> void:
+	for rotation in def.weekly_flights:
+		var label := "%s %d/%d" % [def.short_code, rotation.arrival_number, rotation.departure_number]
+		if rotation.get_arrival_minute() < 0 or rotation.get_departure_minute() < 0:
+			push_warning("AirlineCatalog: %s %s has a bad time ('%s', '%s')"
+				% [file, label, rotation.arrival_time, rotation.departure_time])
+			continue
+		if not def.fleet.has(rotation.aircraft_type):
+			push_warning("AirlineCatalog: %s %s uses %s, which isn't in the fleet" % [file, label, rotation.aircraft_type])
+		var type_def: Resource = AircraftCatalog.get_type(rotation.aircraft_type)
+		if type_def != null and rotation.get_ground_minutes() < type_def.turnaround_minutes:
+			push_warning("AirlineCatalog: %s %s has %d min on the ground, less than the %d min turnaround"
+				% [file, label, rotation.get_ground_minutes(), type_def.turnaround_minutes])
+		for day in rotation.days:
+			if day < 0 or day > 6:
+				push_warning("AirlineCatalog: %s %s has day %d (use 0 = Sunday to 6 = Saturday)" % [file, label, day])
 
 
 ## The airline with this ID, or null.

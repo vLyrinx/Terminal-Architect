@@ -1,4 +1,4 @@
-[gd_scene load_steps=43 format=3]
+[gd_scene load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="25_topbar"]
 [ext_resource type="Script" path="res://scripts/ui/build_menu.gd" id="26_buildmenu"]
 [ext_resource type="Script" path="res://scripts/ui/debug_overlay.gd" id="27_debug"]
+[ext_resource type="Script" path="res://scripts/ui/flight_list_debug.gd" id="60_flightlist"]
 [ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
 [ext_resource type="Script" path="res://scripts/airside/runways.gd" id="29_runways"]
 [ext_resource type="Script" path="res://scripts/building/tools/runway_tool.gd" id="38_runwaytool"]
@@ -293,6 +294,19 @@ mouse_filter = 2
 script = ExtResource("27_debug")
 tile_highlighter = NodePath("../../../TileHighlight")
 route_graph = NodePath("../../../RouteGraph")
+
+[node name="FlightListDebug" type="PanelContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 48.0
+offset_right = -8.0
+offset_bottom = 88.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("60_flightlist")
 
 [node name="MessageToast" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("command_runner")]
 layout_mode = 0

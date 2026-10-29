@@ -17,6 +17,8 @@ const AircraftLiveryScript := preload("res://scripts/aircraft/aircraft_livery.gd
 @export var livery: AircraftLiveryScript
 ## Aircraft type ID (AircraftTypeDef.id) -> number of aircraft of that type.
 @export var fleet: Dictionary[StringName, int] = {}
+## Weekly rotations (checklist step 22); FlightSchedule turns them into flights.
+@export var weekly_flights: Array[WeeklyFlightDef] = []
 
 
 ## Total number of aircraft in the fleet.

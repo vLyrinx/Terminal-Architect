@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="AirlineDef" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="AirlineDef" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/airlines/airline_def.gd" id="1_def"]
 [ext_resource type="Script" path="res://scripts/aircraft/aircraft_livery.gd" id="2_livery"]
+[ext_resource type="Script" path="res://scripts/flights/weekly_flight_def.gd" id="3_weekly"]
 
 [sub_resource type="Resource" id="Livery"]
 script = ExtResource("2_livery")
@@ -10,6 +11,72 @@ belly = Color(0.07, 0.17, 0.35, 1)
 tail = Color(0.07, 0.17, 0.35, 1)
 engines = Color(0.05, 0.6, 0.65, 1)
 accent = Color(0.98, 0.72, 0.18, 1)
+
+[sub_resource type="Resource" id="BQ101"]
+script = ExtResource("3_weekly")
+arrival_number = 101
+departure_number = 102
+aircraft_type = &"a320"
+arrival_time = "07:15"
+departure_time = "08:05"
+days = Array[int]([])
+origin = "Port Ellery"
+destination = "Port Ellery"
+
+[sub_resource type="Resource" id="BQ211"]
+script = ExtResource("3_weekly")
+arrival_number = 211
+departure_number = 212
+aircraft_type = &"b738"
+arrival_time = "09:40"
+departure_time = "10:30"
+days = Array[int]([1, 2, 3, 4, 5])
+origin = "Kingsmere"
+destination = "Kingsmere"
+
+[sub_resource type="Resource" id="BQ305"]
+script = ExtResource("3_weekly")
+arrival_number = 305
+departure_number = 306
+aircraft_type = &"a320"
+arrival_time = "12:20"
+departure_time = "13:10"
+days = Array[int]([])
+origin = "Valmont"
+destination = "Valmont"
+
+[sub_resource type="Resource" id="BQ417"]
+script = ExtResource("3_weekly")
+arrival_number = 417
+departure_number = 418
+aircraft_type = &"b738"
+arrival_time = "15:45"
+departure_time = "16:35"
+days = Array[int]([5, 6, 0])
+origin = "Ashford Bay"
+destination = "Ashford Bay"
+
+[sub_resource type="Resource" id="BQ521"]
+script = ExtResource("3_weekly")
+arrival_number = 521
+departure_number = 522
+aircraft_type = &"a320"
+arrival_time = "18:30"
+departure_time = "19:20"
+days = Array[int]([])
+origin = "Port Ellery"
+destination = "Valmont"
+
+[sub_resource type="Resource" id="BQ631"]
+script = ExtResource("3_weekly")
+arrival_number = 631
+departure_number = 632
+aircraft_type = &"b738"
+arrival_time = "22:50"
+departure_time = "06:30"
+days = Array[int]([])
+origin = "Kingsmere"
+destination = "Kingsmere"
 
 [resource]
 script = ExtResource("1_def")
@@ -23,3 +90,4 @@ fleet = Dictionary[StringName, int]({
 &"a320": 4,
 &"b738": 3
 })
+weekly_flights = Array[ExtResource("3_weekly")]([SubResource("BQ101"), SubResource("BQ211"), SubResource("BQ305"), SubResource("BQ417"), SubResource("BQ521"), SubResource("BQ631")])

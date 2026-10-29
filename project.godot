@@ -26,6 +26,7 @@ TaxiwayCatalog="*res://scripts/airside/taxiway_catalog.gd"
 AircraftCatalog="*res://scripts/aircraft/aircraft_catalog.gd"
 StandCatalog="*res://scripts/airside/stand_catalog.gd"
 AirlineCatalog="*res://scripts/airlines/airline_catalog.gd"
+FlightSchedule="*res://scripts/flights/flight_schedule.gd"
 
 [display]
 
