@@ -105,11 +105,12 @@ tool_name = "Floor"
 shortcut = 70
 terminal_floor = NodePath("../../TerminalFloor")
 
-[node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
+[node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "terminal_floor")]
 script = ExtResource("13_walltool")
 tool_name = "Walls"
 shortcut = 76
 terminal_walls = NodePath("../../TerminalWalls")
+terminal_floor = NodePath("../../TerminalFloor")
 
 [node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
 script = ExtResource("14_doortool")
