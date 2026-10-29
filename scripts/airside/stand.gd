@@ -23,6 +23,8 @@ var taxiway_id := 0
 ## Scene node with the stand's mesh and label.
 var node: Node3D
 var label: Label3D
+## Extra label line, such as the next reservation (Stands.set_note()).
+var note := ""
 
 
 ## Direction out of the entry edge, in tiles.

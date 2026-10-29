@@ -54,15 +54,15 @@ func build_text() -> String:
 	var flights := FlightSchedule.get_today_flights()
 	var lines := PackedStringArray()
 	lines.append("TODAY'S FLIGHTS  %s  (F5)" % GameClock.get_date_string())
-	lines.append("%-5s  %-7s  %-3s  %-4s  %-12s  %s" % ["Time", "Flight", "", "Type", "From / to", "Status"])
+	lines.append("%-5s  %-7s  %-3s  %-4s  %-12s  %-5s  %s" % ["Time", "Flight", "", "Type", "From / to", "Stand", "Status"])
 	if flights.is_empty():
 		lines.append("No flights today")
 	var now := GameClock.game_time
 	for f in flights:
 		var marker := " " if f.scheduled_time > now else "*"
-		lines.append("%-5s%s %-7s  %-3s  %-4s  %-12s  %s" % [f.get_time_string(), marker, f.flight_number,
+		lines.append("%-5s%s %-7s  %-3s  %-4s  %-12s  %-5s  %s" % [f.get_time_string(), marker, f.flight_number,
 			"ARR" if f.is_arrival() else "DEP", String(f.aircraft_type).to_upper(), f.route.left(12),
-			f.get_status_name()])
+			str(f.stand_id) if f.stand_id != -1 else "-", f.get_status_name()])
 	var arrivals := flights.filter(func(f) -> bool: return f.is_arrival()).size()
 	lines.append("%d arrivals, %d departures   * = time passed" % [arrivals, flights.size() - arrivals])
 	return "\n".join(lines)

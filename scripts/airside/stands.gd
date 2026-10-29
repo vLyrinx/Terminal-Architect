@@ -279,11 +279,23 @@ func describe(stand: StandScript) -> PackedStringArray:
 	return PackedStringArray([size_text, link])
 
 
+## Sets an extra line on the stand's label, such as its next reservation
+## (stand allocation, step 23). Empty removes it.
+func set_note(id: int, text: String) -> void:
+	var stand: StandScript = _stands.get(id)
+	if stand == null:
+		return
+	stand.note = text
+	_update_label(stand)
+
+
 func _update_label(stand: StandScript) -> void:
 	if stand.label == null:
 		return
 	var lines := describe(stand)
 	stand.label.text = "Stand %d\n%s\n%s" % [stand.id, lines[0], lines[1]]
+	if stand.note != "":
+		stand.label.text += "\n" + stand.note
 	stand.label.modulate = CONNECTED_COLOR if stand.has_taxiway() else NOT_CONNECTED_COLOR
 
 

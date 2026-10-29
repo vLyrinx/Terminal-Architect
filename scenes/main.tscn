@@ -1,4 +1,4 @@
-[gd_scene load_steps=44 format=3]
+[gd_scene load_steps=45 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -23,6 +23,7 @@
 [ext_resource type="Script" path="res://scripts/ui/build_menu.gd" id="26_buildmenu"]
 [ext_resource type="Script" path="res://scripts/ui/debug_overlay.gd" id="27_debug"]
 [ext_resource type="Script" path="res://scripts/ui/flight_list_debug.gd" id="60_flightlist"]
+[ext_resource type="Script" path="res://scripts/flights/stand_allocator.gd" id="61_allocator"]
 [ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
 [ext_resource type="Script" path="res://scripts/airside/runways.gd" id="29_runways"]
 [ext_resource type="Script" path="res://scripts/building/tools/runway_tool.gd" id="38_runwaytool"]
@@ -116,6 +117,11 @@ script = ExtResource("43_stands")
 terminal_floor = NodePath("../TerminalFloor")
 runways = NodePath("../Runways")
 taxiways = NodePath("../Taxiways")
+
+[node name="StandAllocator" type="Node" parent="." node_paths=PackedStringArray("stands", "message_toast")]
+script = ExtResource("61_allocator")
+stands = NodePath("../Stands")
+message_toast = NodePath("../UI/Root/MessageToast")
 
 [node name="RouteGraph" type="Node" parent="." node_paths=PackedStringArray("runways", "taxiways", "stands")]
 script = ExtResource("40_graph")
