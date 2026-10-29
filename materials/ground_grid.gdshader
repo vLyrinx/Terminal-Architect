@@ -4,8 +4,8 @@ shader_type spatial;
 // stays subtle and never shimmers. Costs almost nothing on integrated GPUs.
 render_mode specular_disabled;
 
-uniform vec3 grass_color : source_color = vec3(0.56, 0.71, 0.44);
-uniform vec3 outside_color : source_color = vec3(0.50, 0.63, 0.41);
+uniform vec3 grass_color : source_color = vec3(0.29, 0.43, 0.23);
+uniform vec3 outside_color : source_color = vec3(0.24, 0.36, 0.20);
 uniform vec3 line_color : source_color = vec3(1.0);
 uniform float minor_line_alpha : hint_range(0.0, 1.0) = 0.16;
 uniform float major_line_alpha : hint_range(0.0, 1.0) = 0.28;

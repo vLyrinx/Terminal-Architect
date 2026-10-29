@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/building/build_manager.gd" id="7_build"]
 [ext_resource type="Script" path="res://scripts/building/tools/test_cube_tool.gd" id="8_cube"]
 [ext_resource type="Script" path="res://scripts/debug/build_bar_debug.gd" id="9_buildbar"]
+[ext_resource type="Script" path="res://scripts/building/terminal_floor.gd" id="10_floor"]
+[ext_resource type="Script" path="res://scripts/building/tools/floor_tool.gd" id="11_floortool"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -42,9 +44,13 @@ shadow_enabled = true
 [node name="Ground" type="MeshInstance3D" parent="."]
 script = ExtResource("5_ground")
 
-[node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label")]
+[node name="TerminalFloor" type="Node3D" parent="."]
+script = ExtResource("10_floor")
+
+[node name="TileHighlight" type="MeshInstance3D" parent="." node_paths=PackedStringArray("debug_label", "terminal_floor")]
 script = ExtResource("6_highlight")
 debug_label = NodePath("../DebugUI/TileLabel")
+terminal_floor = NodePath("../TerminalFloor")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 85, 85)
@@ -57,6 +63,12 @@ script = ExtResource("4_markers")
 
 [node name="Building" type="Node3D" parent="."]
 script = ExtResource("7_build")
+
+[node name="FloorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_floor")]
+script = ExtResource("11_floortool")
+tool_name = "Floor"
+shortcut = 70
+terminal_floor = NodePath("../../TerminalFloor")
 
 [node name="TestCubeTool" type="Node3D" parent="Building"]
 script = ExtResource("8_cube")

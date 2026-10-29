@@ -13,6 +13,8 @@ const LIFT := 0.02
 @export var debug_label: Label
 ## Floor being pointed at (only floor 0 for now).
 @export var floor_index := 0
+## Optional TerminalFloor node (terminal_floor.gd), so the highlight sits on top of floor tiles.
+@export var terminal_floor: Node3D
 
 var hovered_tile := Vector2i(-1, -1)
 var has_hovered_tile := false
@@ -38,6 +40,8 @@ func _process(_delta: float) -> void:
 
 	if valid:
 		position = BuildGrid.tile_to_world(pick.tile, floor_index) + Vector3.UP * LIFT
+		if terminal_floor:
+			position.y = terminal_floor.get_surface_height(pick.tile, floor_index) + LIFT
 	visible = valid
 
 	var tile: Vector2i = pick.tile if valid else Vector2i(-1, -1)

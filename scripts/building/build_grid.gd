@@ -102,6 +102,12 @@ func index_to_tile(index: int) -> Vector2i:
 	return Vector2i(index % PLOT_TILES.x, row)
 
 
+## Rectangle of tiles spanning two corner tiles (inclusive, in any order).
+func rect_from_tiles(a: Vector2i, b: Vector2i) -> Rect2i:
+	var top_left := a.min(b)
+	return Rect2i(top_left, (a - b).abs() + Vector2i.ONE)
+
+
 func get_tile_count() -> int:
 	return PLOT_TILES.x * PLOT_TILES.y
 
