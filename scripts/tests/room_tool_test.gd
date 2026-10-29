@@ -7,6 +7,7 @@ extends Node3D
 const TerminalFloorScript := preload("res://scripts/building/terminal_floor.gd")
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 const WallToolScript := preload("res://scripts/building/tools/wall_tool.gd")
+const CommandRunnerScript := preload("res://scripts/core/command_runner.gd")
 
 var _failures := 0
 var _floor: TerminalFloorScript
@@ -21,9 +22,13 @@ func _ready() -> void:
 	_walls = TerminalWallsScript.new()
 	_walls.terminal_floor = _floor
 	add_child(_walls)
+	var runner := CommandRunnerScript.new()
+	runner.terminal_floor = _floor
+	runner.terminal_walls = _walls
+	add_child(runner)
 	_tool = WallToolScript.new()
 	_tool.terminal_walls = _walls
-	_tool.terminal_floor = _floor
+	_tool.command_runner = runner
 	add_child(_tool)
 
 	_tool.mode = WallToolScript.Mode.ROOM

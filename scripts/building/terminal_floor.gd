@@ -125,11 +125,42 @@ func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 				tiles[row + x] = value
 				changed += 1
 	_tiles[floor_index] = tiles  # PackedByteArray is copied on assignment
-	if changed == 0:
-		return 0
+	if changed > 0:
+		_tiles_changed(rect, floor_index)
+	return changed
 
-	# Rebuild every chunk the rect touches, plus neighbours whose slab sides
-	# may now be hidden or exposed.
+
+## The tiles in rect (clipped to the plot), one byte each, row by row: saved
+## by commands so undo can put them back with set_rect_state().
+func get_rect_state(rect: Rect2i, floor_index := 0) -> PackedByteArray:
+	rect = _clip_to_plot(rect)
+	var tiles := _get_tiles(floor_index)
+	var state := PackedByteArray()
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		state.append_array(tiles.slice(row + rect.position.x, row + rect.end.x))
+	return state
+
+
+## Puts back tiles saved by get_rect_state() for the same rect.
+func set_rect_state(rect: Rect2i, state: PackedByteArray, floor_index := 0) -> void:
+	rect = _clip_to_plot(rect)
+	if state.size() != rect.get_area() or state.is_empty():
+		return
+	var tiles := _get_tiles(floor_index)
+	var i := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		for x in range(rect.position.x, rect.end.x):
+			tiles[row + x] = state[i]
+			i += 1
+	_tiles[floor_index] = tiles
+	_tiles_changed(rect, floor_index)
+
+
+## Rebuilds every chunk rect touches, plus neighbours whose slab sides may now
+## be hidden or exposed, and tells listeners.
+func _tiles_changed(rect: Rect2i, floor_index: int) -> void:
 	@warning_ignore("integer_division")
 	var first := Vector2i((rect.position.x - 1) / CHUNK_TILES, (rect.position.y - 1) / CHUNK_TILES)
 	@warning_ignore("integer_division")
@@ -138,7 +169,6 @@ func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 		for cx in range(maxi(first.x, 0), last.x + 1):
 			_rebuild_chunk(Vector3i(cx, cy, floor_index))
 	floor_changed.emit(rect, floor_index)
-	return changed
 
 
 # --- Meshing --------------------------------------------------------------------

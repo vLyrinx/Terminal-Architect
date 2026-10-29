@@ -1,5 +1,5 @@
 extends "res://scripts/core/commands/game_command.gd"
-## Places a new object (checklist step 11).
+## Places a new object (checklist step 11) and pays its cost (step 14).
 
 var def_id: StringName
 ## Exact position and rotation (the tool snaps them to the grid first).
@@ -33,12 +33,18 @@ func execute(world: Node) -> bool:
 	error = objects.check_placement(def, position, rotation, floor_index)
 	if error != "":
 		return false
+	if not can_pay(def.cost):
+		return false
 	object_id = objects.add_object(def_id, position, rotation, floor_index, object_id)
-	return object_id > 0
+	if object_id <= 0:
+		return false
+	pay(-def.cost, &"construction")
+	return true
 
 
 func undo(world: Node) -> void:
 	world.placed_objects.remove_object(object_id)
+	unpay()
 
 
 func describe() -> String:
@@ -53,6 +59,7 @@ func to_dict() -> Dictionary:
 		"rotation": rotation,
 		"floor": floor_index,
 		"id": object_id,
+		"player": player_id,
 	}
 
 
@@ -62,3 +69,4 @@ func load_dict(data: Dictionary) -> void:
 	rotation = float(data.rotation)
 	floor_index = int(data.floor)
 	object_id = int(data.id)
+	player_id = int(data.get("player", 1))

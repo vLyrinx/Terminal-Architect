@@ -159,6 +159,30 @@ func set_run(from: Vector2i, to: Vector2i, place: bool, floor_index := 0) -> int
 	return changed
 
 
+## The pieces on a run's edges, in get_run_edges() order: saved by commands so
+## undo can put them back with set_run_pieces().
+func get_run_pieces(from: Vector2i, to: Vector2i, floor_index := 0) -> PackedByteArray:
+	var pieces := PackedByteArray()
+	for edge: Array in get_run_edges(from, to):
+		pieces.append(get_edge(edge[0], edge[1], floor_index))
+	return pieces
+
+
+## Puts back pieces saved by get_run_pieces() for the same run.
+func set_run_pieces(from: Vector2i, to: Vector2i, pieces: PackedByteArray, floor_index := 0) -> void:
+	var edges := get_run_edges(from, to)
+	if edges.is_empty() or edges.size() != pieces.size():
+		return
+	var data := _get_edges(floor_index)
+	var slot := 0 if edges[0][1] else 1
+	var arr: PackedByteArray = data[slot]
+	for i in edges.size():
+		var corner: Vector2i = edges[i][0]
+		arr[corner.x + corner.y * _stride] = pieces[i]
+	data[slot] = arr
+	_edges_changed(from.min(to), from.max(to), floor_index)
+
+
 ## Turns a wall piece into a doorway (door = true) or a doorway back into wall.
 ## Returns false if the edge didn't hold the right piece.
 func set_door(corner: Vector2i, horizontal: bool, door: bool, floor_index := 0) -> bool:

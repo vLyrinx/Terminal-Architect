@@ -144,6 +144,34 @@ func paint_rect(rect: Rect2i, zone: int, floor_index := 0) -> int:
 	return changed
 
 
+## The zones in rect (clipped to the plot), one byte each, row by row: saved
+## by commands that remove floor (and so clear zones), for undo.
+func get_rect_state(rect: Rect2i, floor_index := 0) -> PackedByteArray:
+	rect = rect.intersection(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES))
+	var zones := _get_zones(floor_index)
+	var state := PackedByteArray()
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		state.append_array(zones.slice(row + rect.position.x, row + rect.end.x))
+	return state
+
+
+## Puts back zones saved by get_rect_state() for the same rect.
+func set_rect_state(rect: Rect2i, state: PackedByteArray, floor_index := 0) -> void:
+	rect = rect.intersection(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES))
+	if state.size() != rect.get_area() or state.is_empty():
+		return
+	var zones := _get_zones(floor_index)
+	var i := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		for x in range(rect.position.x, rect.end.x):
+			zones[row + x] = state[i]
+			i += 1
+	_zones[floor_index] = zones
+	_after_change(rect, floor_index)
+
+
 # --- Overlay --------------------------------------------------------------------
 
 func set_overlay_visible(value: bool) -> void:

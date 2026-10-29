@@ -51,6 +51,7 @@ func to_dict() -> Dictionary:
 		"id": object_id,
 		"position": vec3_to_array(new_position),
 		"rotation": new_rotation,
+		"player": player_id,
 	}
 
 
@@ -58,3 +59,4 @@ func load_dict(data: Dictionary) -> void:
 	object_id = int(data.id)
 	new_position = array_to_vec3(data.position)
 	new_rotation = float(data.rotation)
+	player_id = int(data.get("player", 1))

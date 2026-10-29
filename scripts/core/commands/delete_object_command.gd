@@ -1,5 +1,6 @@
 extends "res://scripts/core/commands/game_command.gd"
 ## Deletes a placed object (checklist step 11). Undo puts it back with the same ID.
+## The player gets part of its cost back (EconomySettings.sale_refund, step 14).
 
 var object_id := 0
 # Saved by execute() for undo.
@@ -27,11 +28,14 @@ func execute(world: Node) -> bool:
 	_rotation = obj.rotation
 	_floor_index = obj.floor_index
 	world.placed_objects.remove_object(object_id)
+	var def := ObjectCatalog.get_def(_def_id)
+	pay(Money.refund_for(def.cost if def else 0), &"sale")
 	return true
 
 
 func undo(world: Node) -> void:
 	world.placed_objects.add_object(_def_id, _position, _rotation, _floor_index, object_id)
+	unpay()
 
 
 func describe() -> String:
@@ -39,8 +43,9 @@ func describe() -> String:
 
 
 func to_dict() -> Dictionary:
-	return {"type": get_type(), "id": object_id}
+	return {"type": get_type(), "id": object_id, "player": player_id}
 
 
 func load_dict(data: Dictionary) -> void:
 	object_id = int(data.id)
+	player_id = int(data.get("player", 1))

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="EconomySettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/economy/economy_settings.gd" id="1_economy"]
+
+[resource]
+script = ExtResource("1_economy")
+starting_money = 250000
+sale_refund = 0.5
+floor_tile_cost = 25
+wall_cost = 150
+door_cost = 800

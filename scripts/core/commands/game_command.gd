@@ -14,9 +14,18 @@ extends RefCounted
 ##   - undo() exactly reverses a successful execute().
 ##   - to_dict() / load_dict() turn it into plain data and back
 ##     (CommandRunner.command_from_dict() picks the right command type).
+##   - Money (checklist step 14): execute() calls can_pay() before changing
+##     anything, then pay() once the change is made; undo() calls unpay().
+##     A command makes at most one transaction.
 
 ## Why the last execute() failed ("" if it worked).
 var error := ""
+## Player who did this action, recorded on its transaction (1 until co-op).
+var player_id := 1
+
+# The payment made by the last execute(), for unpay().
+var _paid := 0
+var _paid_category := &""
 
 
 ## Type name used in to_dict() and by CommandRunner.command_from_dict().
@@ -46,6 +55,29 @@ func to_dict() -> Dictionary:
 
 func load_dict(_data: Dictionary) -> void:
 	pass
+
+
+## True if the player can pay cost; otherwise sets error and returns false.
+func can_pay(cost: int) -> bool:
+	if Money.can_afford(cost):
+		return true
+	error = Money.shortfall_message(cost)
+	return false
+
+
+## Records this command's transaction: amount is negative for spending and
+## positive for refunds. Call after the change is made.
+func pay(amount: int, category: StringName) -> void:
+	_paid = amount
+	_paid_category = category
+	Money.add(amount, category, describe(), player_id)
+
+
+## Reverses the transaction pay() made (for undo()).
+func unpay() -> void:
+	if _paid != 0:
+		Money.add(-_paid, _paid_category, "Undo " + describe(), player_id)
+	_paid = 0
 
 
 static func vec3_to_array(v: Vector3) -> Array:

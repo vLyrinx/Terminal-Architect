@@ -15,7 +15,7 @@ const CATEGORIES := ["Terminal", "Check-in", "Security", "Seating", "Facilities"
 @export var id: StringName
 @export var display_name := ""
 @export_enum("Terminal", "Check-in", "Security", "Seating", "Facilities", "Gate", "Test") var category := "Terminal"
-## Construction cost (charged once money exists, checklist step 14).
+## Construction cost, paid when placed (checklist step 14).
 @export var cost := 0
 ## Size in tiles: X along the model's local X, Y along its local Z.
 @export var footprint := Vector2i.ONE

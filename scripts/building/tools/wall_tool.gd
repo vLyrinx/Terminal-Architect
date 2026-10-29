@@ -13,18 +13,21 @@ extends "res://scripts/building/build_tool.gd"
 ## along. The ghost is a post on the nearest corner while hovering, then the
 ## walls while dragging: green when building, red when removing. Shift is read
 ## when the mouse button is released, so it can be pressed or let go mid-drag.
+## Each drag is one SetWallsCommand, which pays for it (checklist step 14);
+## the label shows the price or refund.
 
 enum Mode { LINE, ROOM }
 
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
+const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_command.gd")
 ## Ghost is a little bigger than the wall so it shows over existing walls.
 const GHOST_GROW := 0.06
 const MODE_NAMES := ["Line", "Room"]
 
 ## The TerminalWalls node (terminal_walls.gd).
 @export var terminal_walls: Node3D
-## The TerminalFloor node (terminal_floor.gd), for laying room floors.
-@export var terminal_floor: Node3D
+## The CommandRunner node (command_runner.gd).
+@export var command_runner: Node
 
 var mode := Mode.LINE
 
@@ -102,21 +105,13 @@ func release(_tile: Vector2i, _in_plot: bool) -> void:
 		return
 	_dragging = false
 	_removing = Input.is_physical_key_pressed(KEY_SHIFT)
-	var changed := 0
-	var floor_laid := 0
-	if mode == Mode.LINE:
-		changed = terminal_walls.set_run(_start, _end, not _removing, get_floor())
-	else:
-		var rect := _room_rect()
-		if not _removing and rect.size.x > 0 and rect.size.y > 0:
-			# Floor first, so the new walls know which side is inside.
-			floor_laid = terminal_floor.set_rect(rect, true, get_floor())
-		for side: Array in _room_sides():
-			changed += terminal_walls.set_run(side[0], side[1], not _removing, get_floor())
+	var command := _make_command()
+	var p := command.preview(command_runner)
+	if p.walls + p.floor == 0 or not command_runner.submit(command):
+		return
 	var counts: Dictionary = terminal_walls.get_piece_counts(get_floor())
-	print("BUILD | %s %s: %d wall pieces%s from corner %s to %s (total %d walls, %d doors)" % [
-		MODE_NAMES[mode].to_lower(), "removed" if _removing else "built", changed,
-		", %d floor tiles" % floor_laid if floor_laid > 0 else "", _start, _end, counts.walls, counts.doors])
+	print("BUILD | %s %s from corner %s to %s (total %d walls, %d doors)" % [
+		MODE_NAMES[mode].to_lower(), "removed" if _removing else "built", _start, _end, counts.walls, counts.doors])
 
 
 func cancel_drag() -> void:
@@ -127,6 +122,14 @@ func get_hint() -> String:
 	if mode == Mode.LINE:
 		return "Walls: Line mode (Tab: Room)   Drag along grid lines: build wall   Shift + drag: remove   Esc: cancel"
 	return "Walls: Room mode (Tab: Line)   Drag a rectangle: floor + walls   Shift + drag: remove walls   Esc: cancel"
+
+
+## The command for the current drag: one run in Line mode; four sides and the
+## floor inside in Room mode.
+func _make_command() -> SetWallsCommandScript:
+	if mode == Mode.LINE:
+		return SetWallsCommandScript.new([[_start, _end]], not _removing, get_floor())
+	return SetWallsCommandScript.new(_room_sides(), not _removing, get_floor(), _room_rect())
 
 
 ## Keeps the drag on one grid line: whichever axis the mouse moved further along.
@@ -167,23 +170,24 @@ func _update_ghost() -> void:
 		_place_ghost(_ghosts[0], _hover_corner, _hover_corner, material)
 		return
 
-	var changes := 0
+	var p := _make_command().preview(command_runner)
+	var affordable := Money.can_afford(-p.amount)
+	if not affordable:
+		material = ghost_material(false)
 	if mode == Mode.LINE:
 		_place_ghost(_ghosts[0], _start, _end, material)
-		changes = terminal_walls.count_run_changes(_start, _end, not _removing, get_floor())
 	else:
 		var sides := _room_sides()
 		for i in 4:
 			_place_ghost(_ghosts[i], sides[i][0], sides[i][1], material)
-			changes += terminal_walls.count_run_changes(sides[i][0], sides[i][1], not _removing, get_floor())
 
 	if _label.visible:
 		var size := (_end - _start).abs()
 		var lo := BuildGrid.tile_corner_to_world(_start.min(_end), get_floor())
 		var hi := BuildGrid.tile_corner_to_world(_start.max(_end), get_floor())
 		var what := "%d m" % maxi(size.x, size.y) if mode == Mode.LINE else "%d x %d room" % [size.x, size.y]
-		_label.text = "%s   %s %d" % [what, "remove" if _removing else "build", changes]
-		_label.modulate = Color(1.0, 0.75, 0.75) if _removing else Color.WHITE
+		_label.text = "%s   %s %d   %s" % [what, "remove" if _removing else "build", p.walls, price_text(p.amount)]
+		_label.modulate = Color.WHITE if affordable and not _removing else Color(1.0, 0.75, 0.75)
 		_label.global_position = (lo + hi) * 0.5 + Vector3.UP * (TerminalWallsScript.HEIGHT + 0.8)
 
 

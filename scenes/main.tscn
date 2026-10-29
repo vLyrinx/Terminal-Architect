@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" path="res://scripts/debug/clock_debug_label.gd" id="1_clock"]
 [ext_resource type="Script" path="res://scripts/debug/speed_controls_debug.gd" id="2_speed"]
@@ -21,6 +21,8 @@
 [ext_resource type="Script" path="res://scripts/building/tools/object_tool.gd" id="19_objecttool"]
 [ext_resource type="Script" path="res://scripts/building/tools/edit_tool.gd" id="20_edittool"]
 [ext_resource type="Script" path="res://scripts/camera/cutaway.gd" id="21_cutaway"]
+[ext_resource type="Script" path="res://scripts/debug/money_debug_label.gd" id="22_money"]
+[ext_resource type="Script" path="res://scripts/debug/message_toast.gd" id="23_toast"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -68,9 +70,12 @@ script = ExtResource("17_objects")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_walls = NodePath("../TerminalWalls")
 
-[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects")]
+[node name="Commands" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones")]
 script = ExtResource("18_commands")
 placed_objects = NodePath("../PlacedObjects")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+terminal_zones = NodePath("../TerminalZones")
 
 [node name="TerminalZones" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor")]
 script = ExtResource("15_zones")
@@ -99,24 +104,26 @@ script = ExtResource("4_markers")
 [node name="Building" type="Node3D" parent="."]
 script = ExtResource("7_build")
 
-[node name="FloorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_floor")]
+[node name="FloorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_floor", "command_runner")]
 script = ExtResource("11_floortool")
 tool_name = "Floor"
 shortcut = 70
 terminal_floor = NodePath("../../TerminalFloor")
+command_runner = NodePath("../../Commands")
 
-[node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "terminal_floor")]
+[node name="WallTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "command_runner")]
 script = ExtResource("13_walltool")
 tool_name = "Walls"
 shortcut = 76
 terminal_walls = NodePath("../../TerminalWalls")
-terminal_floor = NodePath("../../TerminalFloor")
+command_runner = NodePath("../../Commands")
 
-[node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls")]
+[node name="DoorTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_walls", "command_runner")]
 script = ExtResource("14_doortool")
 tool_name = "Doors"
 shortcut = 78
 terminal_walls = NodePath("../../TerminalWalls")
+command_runner = NodePath("../../Commands")
 
 [node name="LandsideTool" type="Node3D" parent="Building" node_paths=PackedStringArray("terminal_zones")]
 script = ExtResource("16_zonetool")
@@ -179,6 +186,26 @@ offset_right = 316.0
 offset_bottom = 218.0
 label_settings = SubResource("ClockLabelSettings")
 text = "Tile: none"
+
+[node name="MoneyLabel" type="VBoxContainer" parent="DebugUI"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -316.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 80.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("22_money")
+
+[node name="MessageToast" type="PanelContainer" parent="DebugUI" node_paths=PackedStringArray("command_runner")]
+offset_top = 72.0
+offset_right = 40.0
+offset_bottom = 112.0
+mouse_filter = 2
+script = ExtResource("23_toast")
+command_runner = NodePath("../../Commands")
 
 [node name="BuildBar" type="VBoxContainer" parent="DebugUI" node_paths=PackedStringArray("build_manager")]
 anchors_preset = 2

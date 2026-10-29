@@ -102,6 +102,16 @@ func is_active() -> bool:
 	return manager != null and manager.active_tool == self
 
 
+## Price text for a preview label: "$1,500", "refund $750", or
+## "$1,500 - not enough money" when the player can't pay.
+static func price_text(amount: int) -> String:
+	if amount >= 0:
+		return "refund %s" % Money.format(amount) if amount > 0 else ""
+	if not Money.can_afford(-amount):
+		return "%s - not enough money" % Money.format(-amount)
+	return Money.format(-amount)
+
+
 ## Floor the manager is building on.
 func get_floor() -> int:
 	return manager.floor_index if manager else 0

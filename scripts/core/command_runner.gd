@@ -15,11 +15,21 @@ signal command_failed(command: RefCounted)
 const PlaceObjectCommandScript := preload("res://scripts/core/commands/place_object_command.gd")
 const RotateObjectCommandScript := preload("res://scripts/core/commands/rotate_object_command.gd")
 const DeleteObjectCommandScript := preload("res://scripts/core/commands/delete_object_command.gd")
+const SetFloorCommandScript := preload("res://scripts/core/commands/set_floor_command.gd")
+const SetWallsCommandScript := preload("res://scripts/core/commands/set_walls_command.gd")
+const SetDoorCommandScript := preload("res://scripts/core/commands/set_door_command.gd")
 ## Oldest commands are dropped from the history beyond this.
 const MAX_HISTORY := 500
 
 ## The PlacedObjects node (placed_objects.gd).
 @export var placed_objects: Node3D
+## The TerminalFloor node (terminal_floor.gd).
+@export var terminal_floor: Node3D
+## The TerminalWalls node (terminal_walls.gd).
+@export var terminal_walls: Node3D
+## The TerminalZones node (terminal_zones.gd), so undoing a floor removal can
+## put its zones back. Optional.
+@export var terminal_zones: Node3D
 
 ## Commands that ran, oldest first.
 var history: Array = []
@@ -59,6 +69,12 @@ static func command_from_dict(data: Dictionary) -> RefCounted:
 			command = RotateObjectCommandScript.new()
 		"delete_object":
 			command = DeleteObjectCommandScript.new()
+		"set_floor":
+			command = SetFloorCommandScript.new()
+		"set_walls":
+			command = SetWallsCommandScript.new()
+		"set_door":
+			command = SetDoorCommandScript.new()
 		_:
 			return null
 	command.load_dict(data)

@@ -63,12 +63,14 @@ func _process(_delta: float) -> void:
 	var def: Resource = _defs[_def_index]
 	_position = placed_objects.snap_position(def, pick.position, _rotation, get_floor())
 	_reason = placed_objects.check_placement(def, _position, _rotation, get_floor())
+	if _reason == "" and not Money.can_afford(def.cost):
+		_reason = "%s - not enough money" % Money.format(def.cost)
 	_ghost.global_position = _position
 	_ghost.rotation = Vector3(0.0, _rotation, 0.0)
 	_set_ghost_valid(_reason == "")
 	_label.visible = true
 	if _reason == "":
-		_label.text = "%s   %s" % [def.display_name, format_cost(def.cost)]
+		_label.text = "%s   %s" % [def.display_name, Money.format(def.cost)]
 		_label.modulate = Color.WHITE
 	else:
 		_label.text = _reason
@@ -102,18 +104,7 @@ func get_hint() -> String:
 		return "No objects in data/objects/"
 	var def: Resource = _defs[_def_index]
 	return "%s: %s (%s)   %d of %d   Click: place   R: rotate   Tab / Shift+Tab: change object   Esc: cancel" % [
-		def.category, def.display_name, format_cost(def.cost), _def_index + 1, _defs.size()]
-
-
-## "$15,000"
-static func format_cost(amount: int) -> String:
-	var digits := str(absi(amount))
-	var grouped := ""
-	for i in digits.length():
-		if i > 0 and (digits.length() - i) % 3 == 0:
-			grouped += ","
-		grouped += digits[i]
-	return ("-$" if amount < 0 else "$") + grouped
+		def.category, def.display_name, Money.format(def.cost), _def_index + 1, _defs.size()]
 
 
 func _rebuild_ghost() -> void:
