@@ -12,6 +12,10 @@ extends Node
 ## between open ground and landside (or unzoned) terminal floor. With no
 ## entrance, passengers wait to arrive until one is built; anyone still not
 ## there at departure time doesn't come at all.
+##
+## It also owns passenger movement: walk() sends a visible passenger along a
+## path (re-planned when the layout changes) and calls back when they arrive,
+## so the check-in, security and gate systems only decide where people go.
 
 const PassengerScript := preload("res://scripts/passengers/passenger.gd")
 const FlightScript := preload("res://scripts/flights/flight.gd")
@@ -96,10 +100,48 @@ func _process(delta: float) -> void:
 		return
 	var step := WALK_SPEED * GameClock.speed * delta
 	var still: Array[PassengerScript] = []
+	var done: Array[PassengerScript] = []
 	for p in _walking:
 		if _walk(p, step):
 			still.append(p)
+		else:
+			done.append(p)
 	_walking = still
+	for p in done:
+		_finish_walk(p)
+
+
+## Sends a visible passenger walking to target (on their access level's paths);
+## done is called with the passenger when they get there. direct walks in a
+## straight line, for short moves such as stepping up in a queue.
+func walk(p: PassengerScript, target: Vector3, done := Callable(), direct := false) -> void:
+	p.target = target
+	p.on_arrive = done
+	p.walk_direct = direct
+	var pos := crowd.get_passenger_position(p.crowd_id)
+	if direct or terminal_paths == null:
+		p.path = PackedVector3Array([pos, target])
+	else:
+		p.path = terminal_paths.find_path(pos, target, p.access, true)
+	p.path_next = 1
+	if p.path.size() < 2:
+		_finish_walk(p)
+		return
+	crowd.set_walking(p.crowd_id, true)
+	if not p.is_walking:
+		p.is_walking = true
+		_walking.append(p)
+
+
+## Turns a standing passenger to face along direction.
+func face(p: PassengerScript, direction: Vector3) -> void:
+	if p.crowd_id >= 0 and direction.length_squared() > 0.0001:
+		crowd.set_pose(p.crowd_id, crowd.get_passenger_position(p.crowd_id), PassengerCrowdScript.yaw_towards(direction))
+
+
+## Every passenger not yet removed.
+func get_all_passengers() -> Array:
+	return _passengers.values()
 
 
 # --- Queries ----------------------------------------------------------------------
@@ -114,7 +156,9 @@ func get_passengers_of(flight: FlightScript) -> Array:
 
 ## Number of passengers in each state, as {State: count}.
 func get_state_counts() -> Dictionary:
-	var counts := {State.EXPECTED: 0, State.ARRIVING: 0, State.AT_ENTRANCE: 0}
+	var counts := {}
+	for s: int in State.values():
+		counts[s] = 0
 	for p: PassengerScript in _passengers.values():
 		counts[p.state] += 1
 	return counts
@@ -131,6 +175,8 @@ func remove_passenger(p: PassengerScript) -> void:
 	_passengers.erase(p.id)
 	_pending.erase(p)
 	_walking.erase(p)
+	p.is_walking = false
+	p.on_arrive = Callable()
 	if p.crowd_id >= 0 and crowd != null:
 		crowd.remove(p.crowd_id)
 		p.crowd_id = -1
@@ -213,20 +259,18 @@ func _spawn(p: PassengerScript) -> void:
 	var door: Vector3 = (BuildGrid.tile_to_world(e.inside, floor_index) + BuildGrid.tile_to_world(e.outside, floor_index)) * 0.5
 	var start := door + out * SPAWN_DISTANCE + side * _rng.randf_range(-SPAWN_SPREAD, SPAWN_SPREAD)
 	start.y = 0.0
-	p.target = _wait_spot(e)
 	p.state = State.ARRIVING
+	p.access = LANDSIDE
 	p.crowd_id = crowd.add(start, PassengerCrowdScript.yaw_towards(-out)) if crowd != null else -1
-	p.path = terminal_paths.find_path(start, p.target, LANDSIDE, true) if terminal_paths != null else PackedVector3Array()
-	p.path_next = 1
 	var arrived: int = _arrived_count.get(p.flight.id, 0) + 1
 	_arrived_count[p.flight.id] = arrived
 	if arrived == 1:
 		print("PASSENGERS | %s first passenger for %s (departs %s)" % [GameClock.get_time_string(), p.flight.flight_number,
 			p.flight.get_time_string()])
-	if p.crowd_id < 0 or p.path.size() < 2:
+	if p.crowd_id < 0:
 		_arrive(p)
 		return
-	_walking.append(p)
+	walk(p, _wait_spot(e), _arrive)
 
 
 ## A random landside floor tile a few tiles inside the entrance, as a world point.
@@ -262,20 +306,27 @@ func _walk(p: PassengerScript, step: float) -> bool:
 			crowd.set_pose(p.crowd_id, pos, PassengerCrowdScript.yaw_towards(to))
 	if p.entered_time < 0 and terminal_floor.has_floor(BuildGrid.world_to_tile(pos), floor_index):
 		p.entered_time = GameClock.game_time
-	if p.path_next >= p.path.size():
-		_arrive(p)
-		return false
-	return true
+	return p.path_next < p.path.size()
+
+
+## A walk ended: stop the walk animation and tell whoever sent them.
+func _finish_walk(p: PassengerScript) -> void:
+	p.is_walking = false
+	if p.crowd_id >= 0:
+		crowd.set_walking(p.crowd_id, false)
+	var done := p.on_arrive
+	p.on_arrive = Callable()
+	if done.is_valid():
+		done.call(p)
 
 
 func _arrive(p: PassengerScript) -> void:
 	p.state = State.AT_ENTRANCE
 	if p.entered_time < 0:
 		p.entered_time = GameClock.game_time
-	if p.crowd_id >= 0:
-		crowd.set_walking(p.crowd_id, false)
 	passenger_arrived.emit(p)
-	if p.flight.passengers.all(func(q: PassengerScript) -> bool: return q.state == State.AT_ENTRANCE):
+	if p.flight.passengers.all(func(q: PassengerScript) -> bool:
+			return q.state != State.EXPECTED and q.state != State.ARRIVING):
 		print("PASSENGERS | %s all %d passengers for %s are in (departs %s)" % [GameClock.get_time_string(),
 			p.flight.passengers.size(), p.flight.flight_number, p.flight.get_time_string()])
 
@@ -294,8 +345,12 @@ func _on_day_passed(_datetime: Dictionary) -> void:
 
 func _on_paths_changed() -> void:
 	for p in _walking:
-		p.path = terminal_paths.find_path(crowd.get_passenger_position(p.crowd_id), p.target, LANDSIDE, true)
-		p.path_next = 1
+		if p.walk_direct:
+			continue
+		var path := terminal_paths.find_path(crowd.get_passenger_position(p.crowd_id), p.target, p.access, true)
+		if path.size() >= 2:
+			p.path = path
+			p.path_next = 1
 
 
 # --- Entrances --------------------------------------------------------------------

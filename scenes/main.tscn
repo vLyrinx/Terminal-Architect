@@ -1,4 +1,4 @@
-[gd_scene load_steps=55 format=3]
+[gd_scene load_steps=56 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -51,6 +51,7 @@
 [ext_resource type="Script" path="res://scripts/passengers/terminal_paths.gd" id="63_paths"]
 [ext_resource type="Script" path="res://scripts/passengers/passenger_crowd.gd" id="64_crowd"]
 [ext_resource type="Script" path="res://scripts/passengers/passenger_spawner.gd" id="65_spawner"]
+[ext_resource type="Script" path="res://scripts/passengers/check_in.gd" id="66_checkin"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -182,6 +183,15 @@ terminal_walls = NodePath("../TerminalWalls")
 terminal_zones = NodePath("../TerminalZones")
 terminal_paths = NodePath("../TerminalPaths")
 crowd = NodePath("../PassengerCrowd")
+
+[node name="CheckIn" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "terminal_paths", "spawner")]
+script = ExtResource("66_checkin")
+placed_objects = NodePath("../PlacedObjects")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+terminal_zones = NodePath("../TerminalZones")
+terminal_paths = NodePath("../TerminalPaths")
+spawner = NodePath("../PassengerSpawner")
 
 [node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
 script = ExtResource("41_graphoverlay")

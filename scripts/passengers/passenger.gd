@@ -5,9 +5,11 @@ extends RefCounted
 ## flight.passengers), so later steps (check-in, security, gate, boarding)
 ## can route them and know when they need to be where.
 
-enum State { EXPECTED, ARRIVING, AT_ENTRANCE }
+enum State { EXPECTED, ARRIVING, AT_ENTRANCE, WAITING_CHECKIN, TO_CHECKIN, QUEUING_CHECKIN, CHECKING_IN, CHECKED_IN }
 
-const STATE_NAMES := ["Expected", "Arriving", "At entrance"]
+const STATE_NAMES := ["Expected", "Arriving", "At entrance", "Waiting for a check-in desk", "Going to check-in",
+	"Queuing for check-in",
+	"Checking in", "Checked in"]
 
 ## Unique for this game session.
 var id := 0
@@ -21,11 +23,22 @@ var crowd_id := -1
 var entrance := -1
 ## Game time they stepped inside the entrance, or -1.
 var entered_time := -1
+## Where they may walk (TerminalPaths.Access).
+var access := 0
+## Check-in desk (placed object id) they queue at or checked in at, or 0 (step 30).
+var desk_id := 0
+## Game time they finished checking in, or -1.
+var checked_in_time := -1
 
-## Walking path (world points) and the index of the next point.
+## Walking path (world points), the index of the next point, and where it ends.
 var path := PackedVector3Array()
 var path_next := 0
 var target := Vector3.ZERO
+var is_walking := false
+## True for short straight moves (stepping up in a queue) that skip pathfinding.
+var walk_direct := false
+## Called with this passenger when the current walk ends.
+var on_arrive := Callable()
 
 
 func get_state_name() -> String:
