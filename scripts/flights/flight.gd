@@ -27,6 +27,8 @@ var status := Status.SCHEDULED
 var pair: Flight
 ## Set by stand allocation (step 23). -1 = none yet.
 var stand_id := -1
+## Departing passengers booked on this flight (step 29), set by PassengerSpawner.
+var passengers: Array = []
 
 
 func is_arrival() -> bool:

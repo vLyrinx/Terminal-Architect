@@ -1,4 +1,4 @@
-[gd_scene load_steps=52 format=3]
+[gd_scene load_steps=55 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -48,6 +48,9 @@
 [ext_resource type="Texture2D" path="res://ui/icons/zone_airside.svg" id="35_icon_airside"]
 [ext_resource type="Texture2D" path="res://ui/icons/demolish.svg" id="36_icon_demolish"]
 [ext_resource type="Texture2D" path="res://ui/icons/select.svg" id="37_icon_select"]
+[ext_resource type="Script" path="res://scripts/passengers/terminal_paths.gd" id="63_paths"]
+[ext_resource type="Script" path="res://scripts/passengers/passenger_crowd.gd" id="64_crowd"]
+[ext_resource type="Script" path="res://scripts/passengers/passenger_spawner.gd" id="65_spawner"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -161,6 +164,24 @@ runways = NodePath("../Runways")
 ramps = NodePath("../Ramps")
 taxi_lines = NodePath("../TaxiLines")
 stands = NodePath("../Stands")
+
+[node name="TerminalPaths" type="Node" parent="." node_paths=PackedStringArray("terminal_floor", "terminal_walls", "terminal_zones", "placed_objects")]
+script = ExtResource("63_paths")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+terminal_zones = NodePath("../TerminalZones")
+placed_objects = NodePath("../PlacedObjects")
+
+[node name="PassengerCrowd" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("64_crowd")
+
+[node name="PassengerSpawner" type="Node" parent="." node_paths=PackedStringArray("terminal_floor", "terminal_walls", "terminal_zones", "terminal_paths", "crowd")]
+script = ExtResource("65_spawner")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+terminal_zones = NodePath("../TerminalZones")
+terminal_paths = NodePath("../TerminalPaths")
+crowd = NodePath("../PassengerCrowd")
 
 [node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
 script = ExtResource("41_graphoverlay")
