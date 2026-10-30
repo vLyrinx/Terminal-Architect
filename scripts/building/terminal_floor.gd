@@ -38,6 +38,8 @@ const ROOF_SIDE_COLOR := Color(0.66, 0.69, 0.73)
 @export var taxiways: Node3D
 ## Optional Stands node (stands.gd): nor on a stand (checklist step 18).
 @export var stands: Node3D
+## Optional Ramps node (ramps.gd): nor on a runway ramp.
+@export var ramps: Node3D
 
 ## Per floor index: one byte per plot tile, 1 = floor.
 var _tiles := {}
@@ -216,6 +218,8 @@ func _paved_rects(rect: Rect2i) -> Array[Rect2i]:
 		rects.append_array(taxiways.get_rects_in(rect))
 	if stands:
 		rects.append_array(stands.get_rects_in(rect))
+	if ramps:
+		rects.append_array(ramps.get_rects_in(rect))
 	return rects
 
 

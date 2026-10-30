@@ -1,9 +1,9 @@
 extends MeshInstance3D
 ## Debug overlay for the route graph (checklist step 17), toggled with F4 and
-## shown while a taxiway or stand tool is in use. Draws every edge as a line
-## (cyan for taxiways, orange for runways, green for stand lead-ins) and every
-## node as a cross: red at runway thresholds, yellow where a taxiway joins a
-## runway, magenta at a stand's stop bar, white elsewhere. Lines
+## shown while a taxiway, taxi line, ramp or stand tool is in use. Draws every
+## edge as a line (cyan for taxi lines and ramps, orange for runways, green
+## for stand lead-ins) and every node as a cross: red at runway thresholds,
+## yellow where a ramp joins a runway, magenta at a stand's stop bar, white elsewhere. Lines
 ## are drawn on top of everything and stay one pixel wide at any zoom.
 ## Redrawn only when the graph changes and the overlay is shown.
 

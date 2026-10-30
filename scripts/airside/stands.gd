@@ -9,8 +9,9 @@ extends Node3D
 ## connected. Stands may not overlap runways, taxiways, other stands or
 ## terminal floor. Each stand has a yellow lead-in line and stop bar, a red
 ## boundary line, and a label with its number, size class and connection.
-## The RouteGraph adds a lead-in edge from each stand's stop bar to the
-## taxiway centreline. Changes come from PlaceStandCommand and DeleteStandCommand.
+## The RouteGraph adds a lead-in edge from each stand's stop bar out to a taxi
+## line painted on the taxiway in front. Changes come from PlaceStandCommand
+## and DeleteStandCommand.
 ##
 ## Keep this node at the world origin.
 
@@ -50,6 +51,8 @@ const NOT_CONNECTED_COLOR := Color(1.0, 0.7, 0.4)
 @export var runways: Node3D
 ## The Taxiways node (taxiways.gd). Stands open onto taxiways.
 @export var taxiways: Node3D
+## Optional Ramps node (ramps.gd). Stands can't overlap runway ramps.
+@export var ramps: Node3D
 
 var _stands := {}
 var _next_id := 1
@@ -200,6 +203,8 @@ func check_placement(def: Resource, anchor: Vector2i, facing: int) -> String:
 		return "Overlaps a runway"
 	if taxiways and not taxiways.get_taxiways_in(rect).is_empty():
 		return "Overlaps a taxiway"
+	if ramps and not ramps.get_ramps_in(rect).is_empty():
+		return "Overlaps a runway ramp"
 	if not get_stands_in(rect).is_empty():
 		return "Overlaps another stand"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:

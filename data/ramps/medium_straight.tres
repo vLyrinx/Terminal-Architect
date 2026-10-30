@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RampDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/airside/ramp_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://ui/icons/ramp_straight.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"medium_straight"
+display_name = "Medium runway ramp"
+shape = "straight"
+size_class = "medium"
+width = 24
+depth = 40
+cost = 6000
+description = "Attaches to a runway so aircraft can enter and leave it at 90 degrees. Comes with its taxi line. For narrow-body jets and smaller."
+menu_category = "airside"
+icon = ExtResource("2_icon")

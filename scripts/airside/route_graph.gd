@@ -1,41 +1,50 @@
 extends Node
-## Route graph (checklist step 17): the network aircraft move on, built
-## automatically from the runways and taxiways whenever either changes.
+## Route graph (checklist step 17): the network aircraft move on, rebuilt
+## automatically whenever runways, ramps, taxi lines or stands change.
 ##
-## Every runway and taxiway is a straight centreline. Nodes go at both ends of
-## each one and wherever two centrelines meet:
-##   - Crossing or T: two perpendicular centrelines cross, or one ends inside
-##     the other's paving (so a taxiway that stops at a runway's edge still
-##     joins the runway centreline). A taxiway's centreline is extended to the
-##     meeting point; a runway's never goes past its thresholds.
-##   - In line: two parallel centrelines on (nearly) the same line that touch
-##     or overlap share their end points.
-## Nodes closer than MERGE_DISTANCE are merged, which absorbs the half metre
-## between centrelines of odd and even widths. Edges join neighbouring nodes
-## along each centreline. Runway thresholds are marked with their designator.
-## Each stand (checklist step 18) adds its lead-in line, from the stop bar out
-## through the entry edge, which joins only taxiways: it is extended to the
-## centreline of the taxiway in front. The stop bar node carries the stand ID.
+## Aircraft follow painted lines, not paving (as in Airport CEO): taxiway
+## paving on its own adds nothing. The graph is made of straight segments:
+##   - runway centrelines, from threshold to threshold
+##   - each runway ramp's taxi line, which starts on its runway's centreline
+##     (the only way a runway joins the rest of the network)
+##   - the player's taxi lines (taxi_lines.gd), if they are on paving
+##   - each stand's lead-in, from the stop bar out through the entry edge;
+##     it may reach up to STAND_REACH past the edge to meet a taxi line
+## Segments are joined where they cross, where one ends on another (within
+## MERGE_DISTANCE), and where they overlap in line. Runways join only ramps,
+## and stand lead-ins join only taxi lines. Nodes closer than MERGE_DISTANCE
+## are merged. Runway thresholds are marked with their designator and each
+## stand's stop bar with the stand ID.
 ##
 ## Node: {id, position (Vector3), runway_end ("09" or ""), on_runway, on_taxiway,
 ##        on_stand, stand_id (0 if none), edges (edge IDs)}
-## Edge: {id, a, b (node IDs), length, kind ("runway", "taxiway" or "stand"),
-##        source_id (runway, taxiway or stand ID), size_class}
+## Edge: {id, a, b (node IDs), length, kind ("runway", "ramp", "taxiway" or
+##        "stand"), source_id (runway, ramp, taxi line or stand ID), size_class}
 ## find_path() gives the shortest route between two nodes. Node and edge IDs
 ## are renumbered on every rebuild, so keep positions or runway designators,
 ## not IDs, across graph_changed.
 
 signal graph_changed
 
-## Nodes nearer than this, in metres, become one node.
+## Nodes nearer than this, in metres, become one node; segments that come this
+## close to meeting are joined.
 const MERGE_DISTANCE := 1.0
-## Station positions along one centreline closer than this are the same point.
-const SAME_POINT := 0.01
+## A stand's lead-in may reach this far past its entry edge to meet a taxi line.
+const STAND_REACH := 20.0
+## Which segment kinds join each other.
+const JOINS := {
+	"runway": ["ramp"],
+	"ramp": ["runway", "ramp", "taxiway"],
+	"taxiway": ["ramp", "taxiway", "stand"],
+	"stand": ["taxiway"],
+}
 
 ## The Runways node (runways.gd).
 @export var runways: Node3D
-## The Taxiways node (taxiways.gd).
-@export var taxiways: Node3D
+## The Ramps node (ramps.gd).
+@export var ramps: Node3D
+## The TaxiLines node (taxi_lines.gd).
+@export var taxi_lines: Node3D
 ## The Stands node (stands.gd).
 @export var stands: Node3D
 
@@ -54,9 +63,11 @@ func _ready() -> void:
 	if runways:
 		runways.runway_added.connect(_on_changed.unbind(1))
 		runways.runway_removed.connect(_on_changed.unbind(1))
-	if taxiways:
-		taxiways.taxiway_added.connect(_on_changed.unbind(1))
-		taxiways.taxiway_removed.connect(_on_changed.unbind(1))
+	if ramps:
+		ramps.ramp_added.connect(_on_changed.unbind(1))
+		ramps.ramp_removed.connect(_on_changed.unbind(1))
+	if taxi_lines:
+		taxi_lines.lines_changed.connect(_on_changed)
 	if stands:
 		stands.stand_added.connect(_on_changed.unbind(1))
 		stands.stand_removed.connect(_on_changed.unbind(1))
@@ -133,7 +144,7 @@ func _on_changed() -> void:
 		rebuild.call_deferred()
 
 
-## Rebuilds the whole graph from the current runways and taxiways.
+## Rebuilds the whole graph from the current runways, ramps, taxi lines and stands.
 func rebuild() -> void:
 	_rebuild_queued = false
 	nodes.clear()
@@ -141,35 +152,33 @@ func rebuild() -> void:
 	_cells.clear()
 	_astar.clear()
 
-	var lines := _collect_lines()
-	# Points along each line where it meets another, as distances along its axis.
+	var segments := _collect_segments()
+	# Points along each segment where it meets another, as distances from its start.
 	var stations: Array = []
-	for line: Dictionary in lines:
-		stations.append([line.u0, line.u1])
-	for i in lines.size():
-		for j in range(i + 1, lines.size()):
-			_join(lines[i], lines[j], stations[i], stations[j])
+	for segment: Dictionary in segments:
+		stations.append([0.0, segment.length])
+	for i in segments.size():
+		for j in range(i + 1, segments.size()):
+			if JOINS[segments[i].kind].has(segments[j].kind):
+				_join(segments[i], segments[j], stations[i], stations[j])
 
-	for i in lines.size():
-		var line: Dictionary = lines[i]
+	for i in segments.size():
+		var segment: Dictionary = segments[i]
 		var points: Array = stations[i]
 		points.sort()
 		var previous := -1
-		var previous_u := 0.0
-		for u: float in points:
-			if previous >= 0 and u - previous_u < SAME_POINT:
-				continue
-			var node_id := _node_at(_point(line, u))
-			if line.kind == "runway":
-				nodes[node_id].on_runway = true
-			elif line.kind == "taxiway":
-				nodes[node_id].on_taxiway = true
-			else:
-				nodes[node_id].on_stand = true
+		for s: float in points:
+			var node_id := _node_at(_point(segment, s))
+			match segment.kind:
+				"runway":
+					nodes[node_id].on_runway = true
+				"stand":
+					nodes[node_id].on_stand = true
+				_:
+					nodes[node_id].on_taxiway = true
 			if previous >= 0 and previous != node_id:
-				_add_edge(previous, node_id, line)
+				_add_edge(previous, node_id, segment)
 			previous = node_id
-			previous_u = u
 
 	if runways:
 		for runway: RefCounted in runways.get_all():
@@ -187,77 +196,89 @@ func rebuild() -> void:
 		_astar.add_point(node.id, node.position)
 	for edge: Dictionary in edges.values():
 		_astar.connect_points(edge.a, edge.b)
-	print("ROUTE GRAPH | %d nodes, %d edges from %d runways, %d taxiways and %d stands" % [nodes.size(), edges.size(),
-		runways.get_count() if runways else 0, taxiways.get_count() if taxiways else 0,
-		stands.get_count() if stands else 0])
+	print("ROUTE GRAPH | %d nodes, %d edges from %d runways, %d ramps, %d taxi lines and %d stands" % [
+		nodes.size(), edges.size(), runways.get_count() if runways else 0, ramps.get_count() if ramps else 0,
+		taxi_lines.get_count() if taxi_lines else 0, stands.get_count() if stands else 0])
 	graph_changed.emit()
 
 
-## Every runway and taxiway centreline as {kind, source_id, size_class, along_x,
-## u0, u1 (span along the axis), f (the fixed coordinate), half_width, extendable}.
-func _collect_lines() -> Array:
-	var lines := []
+## Every segment as {kind, source_id, size_class, a, b (Vector2 world X/Z),
+## dir (unit), length, reach (how far it may extend past b)}.
+func _collect_segments() -> Array:
+	var segments := []
 	if runways:
 		for runway: RefCounted in runways.get_all():
 			var def := RunwayCatalog.get_def(runway.def_id)
-			lines.append(_make_line("runway", runway.id, def.size_class if def else "",
-				runway.ends[0].position, runway.ends[1].position, runway.width, false))
-	if taxiways:
-		for taxiway: RefCounted in taxiways.get_all():
-			var def := TaxiwayCatalog.get_def(taxiway.def_id)
-			lines.append(_make_line("taxiway", taxiway.id, def.size_class if def else "",
-				taxiway.a, taxiway.b, taxiway.width, true))
+			segments.append(_make_segment("runway", runway.id, def.size_class if def else "",
+				runway.ends[0].position, runway.ends[1].position))
+	if ramps:
+		for ramp: RefCounted in ramps.get_all():
+			var def := RampCatalog.get_def(ramp.def_id)
+			var points: PackedVector2Array = ramp.get_corner_points()
+			for i in range(1, points.size()):
+				segments.append(_make_segment("ramp", ramp.id, def.size_class if def else "",
+					_corner_to_world(points[i - 1]), _corner_to_world(points[i])))
+	if taxi_lines:
+		for line: RefCounted in taxi_lines.get_all():
+			if line.is_usable():
+				segments.append(_make_segment("taxiway", line.id, line.size_class,
+					BuildGrid.tile_corner_to_world(line.a), BuildGrid.tile_corner_to_world(line.b)))
 	if stands:
-		# No width, so a taxiway has to pass in front of the lead-in to join it.
 		for stand: RefCounted in stands.get_all():
 			var def := StandCatalog.get_def(stand.def_id)
-			lines.append(_make_line("stand", stand.id, def.get_taxiway_class() if def else "",
-				stand.stop, stand.entry, 0.0, true))
-	return lines
+			segments.append(_make_segment("stand", stand.id, def.get_taxiway_class() if def else "",
+				stand.stop, stand.entry, STAND_REACH))
+	return segments
 
 
-func _make_line(kind: String, source_id: int, size_class: String, a: Vector3, b: Vector3,
-		width: float, extendable: bool) -> Dictionary:
-	var along_x := absf(b.x - a.x) >= absf(b.z - a.z)
-	var ua := a.x if along_x else a.z
-	var ub := b.x if along_x else b.z
+func _make_segment(kind: String, source_id: int, size_class: String, a: Vector3, b: Vector3,
+		reach := 0.0) -> Dictionary:
+	var a2 := Vector2(a.x, a.z)
+	var b2 := Vector2(b.x, b.z)
 	return {
-		"kind": kind, "source_id": source_id, "size_class": size_class, "along_x": along_x,
-		"u0": minf(ua, ub), "u1": maxf(ua, ub), "f": a.z if along_x else a.x,
-		"half_width": width * 0.5, "extendable": extendable,
+		"kind": kind, "source_id": source_id, "size_class": size_class, "a": a2, "b": b2,
+		"dir": (b2 - a2).normalized(), "length": a2.distance_to(b2), "reach": reach,
 	}
 
 
-## Adds the stations where two lines meet, if they do.
+## Adds the stations where two segments meet, if they do.
 func _join(s: Dictionary, t: Dictionary, s_stations: Array, t_stations: Array) -> void:
-	# A stand's lead-in only joins taxiways, never a runway or another stand.
-	if (s.kind == "stand" and t.kind != "taxiway") or (t.kind == "stand" and s.kind != "taxiway"):
+	var cross: float = s.dir.cross(t.dir)
+	if absf(cross) > 0.001:
+		# They cross where the two lines meet, if that's on (or within reach of) both.
+		var offset: Vector2 = t.a - s.a
+		var along_s := offset.cross(t.dir) / cross
+		var along_t := offset.cross(s.dir) / cross
+		if _within(s, along_s) and _within(t, along_t):
+			s_stations.append(clampf(along_s, 0.0, s.length + s.reach))
+			t_stations.append(clampf(along_t, 0.0, t.length + t.reach))
 		return
-	if s.along_x != t.along_x:
-		# Perpendicular: they meet at (t.f along s, s.f along t). Each may reach
-		# the other through the other's paving, but only taxiways are extended.
-		if _reaches(s, t.f, t.half_width) and _reaches(t, s.f, s.half_width):
-			s_stations.append(t.f)
-			t_stations.append(s.f)
-	elif absf(s.f - t.f) <= MERGE_DISTANCE:
-		# In line: each gets the other's end points that lie on it.
-		for u: float in [t.u0, t.u1]:
-			if u >= s.u0 - MERGE_DISTANCE and u <= s.u1 + MERGE_DISTANCE:
-				s_stations.append(clampf(u, s.u0, s.u1))
-		for u: float in [s.u0, s.u1]:
-			if u >= t.u0 - MERGE_DISTANCE and u <= t.u1 + MERGE_DISTANCE:
-				t_stations.append(clampf(u, t.u0, t.u1))
+	# Parallel: if on the same line, each gets the other's end points that lie on it.
+	if absf((t.a - s.a).cross(s.dir)) > MERGE_DISTANCE:
+		return
+	for p: Vector2 in [t.a, t.b]:
+		var along: float = (p - s.a).dot(s.dir)
+		if _within(s, along):
+			s_stations.append(clampf(along, 0.0, s.length))
+	for p: Vector2 in [s.a, s.b]:
+		var along: float = (p - t.a).dot(t.dir)
+		if _within(t, along):
+			t_stations.append(clampf(along, 0.0, t.length))
 
 
-## True if line reaches position u along its axis: inside its span, or (for a
-## taxiway) beyond an end by no more than reach (the other's half width).
-func _reaches(line: Dictionary, u: float, reach: float) -> bool:
-	var slack: float = reach if line.extendable else 0.0
-	return u >= line.u0 - slack - SAME_POINT and u <= line.u1 + slack + SAME_POINT
+## True if a distance from a segment's start is on it, allowing MERGE_DISTANCE
+## at each end and its reach past the end.
+func _within(segment: Dictionary, along: float) -> bool:
+	return along >= -MERGE_DISTANCE and along <= segment.length + segment.reach + MERGE_DISTANCE
 
 
-func _point(line: Dictionary, u: float) -> Vector3:
-	return Vector3(u, 0.0, line.f) if line.along_x else Vector3(line.f, 0.0, u)
+func _point(segment: Dictionary, along: float) -> Vector3:
+	var p: Vector2 = segment.a + segment.dir * along
+	return Vector3(p.x, 0.0, p.y)
+
+
+func _corner_to_world(corner: Vector2) -> Vector3:
+	return BuildGrid.origin + Vector3(corner.x, 0.0, corner.y) * BuildGrid.TILE_SIZE
 
 
 ## The node at a position, merging with any node within MERGE_DISTANCE.
@@ -289,8 +310,8 @@ func _cell(position: Vector3) -> Vector2i:
 	return Vector2i(floori(position.x / (MERGE_DISTANCE * 2.0)), floori(position.z / (MERGE_DISTANCE * 2.0)))
 
 
-## Joins two nodes, unless they already are (overlapping taxiways give the same edge twice).
-func _add_edge(a: int, b: int, line: Dictionary) -> void:
+## Joins two nodes, unless they already are (overlapping lines give the same edge twice).
+func _add_edge(a: int, b: int, segment: Dictionary) -> void:
 	for edge_id: int in nodes[a].edges:
 		var edge: Dictionary = edges[edge_id]
 		if edge.a == b or edge.b == b:
@@ -299,7 +320,7 @@ func _add_edge(a: int, b: int, line: Dictionary) -> void:
 	edges[id] = {
 		"id": id, "a": a, "b": b,
 		"length": (nodes[a].position as Vector3).distance_to(nodes[b].position),
-		"kind": line.kind, "source_id": line.source_id, "size_class": line.size_class,
+		"kind": segment.kind, "source_id": segment.source_id, "size_class": segment.size_class,
 	}
 	nodes[a].edges.append(id)
 	nodes[b].edges.append(id)

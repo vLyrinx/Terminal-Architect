@@ -1,22 +1,25 @@
 extends "res://scripts/building/build_tool.gd"
-## Taxiway tool (checklist step 17): drag straight taxiway pieces along the grid.
+## Taxiway tool (checklist step 17): drag straight pieces of taxiway paving along the grid.
 ##
-##   Left drag    lay a taxiway from the start corner along X or Z
+##   Left drag    lay taxiway paving from the start corner along X or Z
 ## Pieces start and end on the 10 m airside grid (BuildGrid.AIRSIDE_SNAP, the
 ## major grid lines) and follow whichever axis the mouse has moved further
-## along. Start or end a piece on a runway or another taxiway to join it: the
-## route graph links them wherever they cross, or where one ends inside or
-## against the other's paving. The label shows the length, width and price,
-## and what the piece joins, or why it can't be built. The route graph overlay
-## is shown while this tool is in use. One build menu entry per size in data/taxiways/.
+## along. Paving is only the ground: paint taxi lines on it with the taxi line
+## tool for aircraft to use, and join it to a runway with a runway ramp
+## (start a piece at the ramp's outer end). The label shows the length, width
+## and price, and which ramps and taxiways the piece touches, or why it can't
+## be built. The route graph overlay is shown while this tool is in use. One
+## build menu entry per size in data/taxiways/.
 
 const PlaceTaxiwayCommandScript := preload("res://scripts/core/commands/place_taxiway_command.gd")
 const GHOST_HEIGHT := 0.3
 
 ## The Taxiways node (taxiways.gd).
 @export var taxiways: Node3D
-## The Runways node (runways.gd), to say which runway a piece joins.
+## The Runways node (runways.gd).
 @export var runways: Node3D
+## Optional Ramps node (ramps.gd), to say which ramps a piece touches.
+@export var ramps: Node3D
 ## The CommandRunner node (command_runner.gd).
 @export var command_runner: Node
 ## Optional RouteGraphOverlay node (route_graph_overlay.gd), shown while building.
@@ -103,7 +106,7 @@ func cancel_drag() -> void:
 
 
 func get_hint() -> String:
-	return "Drag along the grid: lay taxiway   Start or end on a runway or taxiway to join it   " + \
+	return "Drag along the grid: lay taxiway paving   Then paint taxi lines on it   " + \
 		"F4: route graph   Right click / Esc: cancel"
 
 
@@ -148,18 +151,17 @@ func _straighten(corner: Vector2i) -> Vector2i:
 	return Vector2i(_start.x, corner.y)
 
 
-## What a piece covering rect would join, such as "joins runway 09/27 and 2 taxiways".
+## What a piece covering rect would touch, such as "touches 1 ramp and 2 taxiways".
 func _joins_text(rect: Rect2i) -> String:
 	var touch := rect.grow(1)
 	var parts: Array[String] = []
-	if runways:
-		for id: int in runways.get_runways_in(touch):
-			var runway: RefCounted = runways.get_runway(id)
-			parts.append("runway %s/%s" % [runway.ends[0].designator, runway.ends[1].designator])
+	var ramp_count: int = ramps.get_ramps_in(touch).size() if ramps else 0
+	if ramp_count > 0:
+		parts.append("%d ramp%s" % [ramp_count, "s" if ramp_count > 1 else ""])
 	var count: int = taxiways.get_taxiways_in(touch).size()
 	if count > 0:
 		parts.append("%d taxiway%s" % [count, "s" if count > 1 else ""])
-	return "joins " + " and ".join(parts) if not parts.is_empty() else "not joined to anything yet"
+	return "touches " + " and ".join(parts) if not parts.is_empty() else "not touching other paving"
 
 
 func _update_ghost() -> void:

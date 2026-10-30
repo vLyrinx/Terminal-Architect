@@ -15,7 +15,9 @@ const RunwaysScript := preload("res://scripts/airside/runways.gd")
 const TaxiwaysScript := preload("res://scripts/airside/taxiways.gd")
 const StandsScript := preload("res://scripts/airside/stands.gd")
 const RouteGraphScript := preload("res://scripts/airside/route_graph.gd")
+const TaxiLinesScript := preload("res://scripts/airside/taxi_lines.gd")
 const CommandRunnerScript := preload("res://scripts/core/command_runner.gd")
+const PlaceTaxiLineCmd := preload("res://scripts/core/commands/place_taxi_line_command.gd")
 const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
 const DeleteTaxiwayCmd := preload("res://scripts/core/commands/delete_taxiway_command.gd")
 const PlaceStandCmd := preload("res://scripts/core/commands/place_stand_command.gd")
@@ -60,9 +62,13 @@ func _ready() -> void:
 	_floor.runways = runways
 	_floor.taxiways = _taxiways
 	_floor.stands = _stands
+	var lines := TaxiLinesScript.new()
+	lines.taxiways = _taxiways
+	lines.runways = runways
+	add_child(lines)
 	_graph = RouteGraphScript.new()
 	_graph.runways = runways
-	_graph.taxiways = _taxiways
+	_graph.taxi_lines = lines
 	_graph.stands = _stands
 	add_child(_graph)
 	_runner = CommandRunnerScript.new()
@@ -72,6 +78,7 @@ func _ready() -> void:
 	_runner.runways = runways
 	_runner.taxiways = _taxiways
 	_runner.stands = _stands
+	_runner.taxi_lines = lines
 	add_child(_runner)
 	_runner.command_failed.connect(func(command: RefCounted) -> void: _last_failed = command)
 	Money.reset(1000000)
@@ -85,6 +92,9 @@ func _ready() -> void:
 	# Medium taxiway along y = 1000 (paving y 988 to 1012), small one along y = 1500.
 	_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1000, 1000), Vector2i(1400, 1000)))
 	_runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(1000, 1500), Vector2i(1400, 1500)))
+	# Aircraft follow taxi lines, so paint one down the middle of each.
+	_runner.submit(PlaceTaxiLineCmd.new(Vector2i(1000, 1000), Vector2i(1400, 1000)))
+	_runner.submit(PlaceTaxiLineCmd.new(Vector2i(1000, 1500), Vector2i(1400, 1500)))
 	await _rebuilt()
 	var medium_id: int = _taxiways.get_taxiway_at(Vector2i(1100, 1000))
 
@@ -106,7 +116,7 @@ func _ready() -> void:
 	_expect("label shows number, size class and connection", stand.label.text.contains("Stand %d" % stand.id)
 		and stand.label.text.contains("narrow-body") and stand.label.text.contains("Connected to taxiway"))
 	await _rebuilt()
-	# Taxiway: 1000, 1200 (joins the lead-in), 1400. Stand: stop bar and entry edge.
+	# Taxi line: 1000, 1200 (joins the lead-in), 1400. Stand: stop bar and entry edge.
 	_expect("graph: 5 nodes, 4 edges with one stand (plus the small taxiway's 2 and 1)", _counts(7, 5))
 	var stop_node := _graph.find_stand(stand.id)
 	var end_node := _graph.nearest_node(_world(Vector2i(1400, 1000)))

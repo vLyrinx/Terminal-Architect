@@ -15,3 +15,5 @@ extends Resource
 @export var wall_cost := 150
 ## Price of turning a wall piece into a doorway.
 @export var door_cost := 800
+## Price per metre of painted taxi line.
+@export var taxi_line_cost_per_metre := 5

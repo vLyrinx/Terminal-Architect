@@ -10,6 +10,8 @@ const WallsCmd := preload("res://scripts/core/commands/set_walls_command.gd")
 const PlaceCmd := preload("res://scripts/core/commands/place_object_command.gd")
 const PlaceRunwayCmd := preload("res://scripts/core/commands/place_runway_command.gd")
 const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
+const PlaceRampCmd := preload("res://scripts/core/commands/place_ramp_command.gd")
+const PlaceTaxiLineCmd := preload("res://scripts/core/commands/place_taxi_line_command.gd")
 
 var _failures := 0
 var _main: Node
@@ -48,8 +50,8 @@ func _ready() -> void:
 	_expect("structures has floor, walls, room and doors", counts.structures == 4)
 	_expect("zones has three zones", counts.zones == 3)
 	_expect("terminal has the five core objects", counts.terminal == 5)
-	_expect("airside has three runway and three taxiway sizes and is enabled",
-		counts.airside == 6 and not menu._category_buttons.airside.disabled)
+	_expect("airside has 3 runways, 6 ramps, 3 taxiways, the taxi line and the stand, and is enabled",
+		counts.airside == 14 and not menu._category_buttons.airside.disabled)
 	_expect("demolish has demolish and select", counts.demolish == 2)
 	_expect("panel starts closed", not menu._item_panel.visible)
 
@@ -116,7 +118,7 @@ func _ready() -> void:
 	await _frames(1)
 	_expect("Airside card selects the runway tool at medium size", manager.active_tool != null
 		and manager.active_tool.name == "RunwayTool" and manager.active_tool.get_active_item_id() == "runway:medium")
-	_expect("tool strip shows the runway width", menu._tool_title.text.begins_with("Medium runway (46 m wide)"))
+	_expect("tool strip shows the runway size", menu._tool_title.text.begins_with("Medium runway (2,400 m x 46 m)"))
 	_key(KEY_ESCAPE)
 	runner.submit(PlaceRunwayCmd.new(&"medium", Vector2i(1500, 1000), Vector2i(3500, 1000)))
 	var runways: Node = _main.get_node("Runways")
@@ -133,13 +135,16 @@ func _ready() -> void:
 	await _frames(3)
 	await _screenshot("runway_whole")
 
-	# Taxiways and the route graph overlay (checklist step 17)
-	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 880), Vector2i(1700, 1160)))
-	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1900, 1160), Vector2i(1900, 1020)))
+	# Ramp, taxiway paving, taxi lines and the route graph overlay (checklist step 17)
+	var runway_id: int = _main.get_node("Runways").get_ids()[0]
+	runner.submit(PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1700, 1070), 1))
+	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1070), Vector2i(1700, 1160)))
 	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1160), Vector2i(2000, 1160)))
+	runner.submit(PlaceTaxiLineCmd.new(Vector2i(1700, 1070), Vector2i(1700, 1160)))
+	runner.submit(PlaceTaxiLineCmd.new(Vector2i(1700, 1160), Vector2i(2000, 1160)))
 	await _frames(2)
 	var graph: Node = _main.get_node("RouteGraph")
-	_expect("route graph builds from the main scene's taxiways", graph.get_node_count() > 4)
+	_expect("route graph builds from the main scene's ramp and taxi lines", graph.get_node_count() > 4)
 	_key(KEY_F4)
 	await _frames(2)
 	_expect("F4 shows the route graph overlay", _main.get_node("RouteGraphOverlay").visible)
@@ -149,6 +154,17 @@ func _ready() -> void:
 	await _frames(3)
 	await _screenshot("taxiways_graph")
 	_key(KEY_F4)
+	# Close-ups of a straight ramp (with a bare stub of paving south of the
+	# line) and an angled one, from above.
+	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1160), Vector2i(1700, 1220)))
+	runner.submit(PlaceRampCmd.new(&"medium_angled", runway_id, Vector2i(2300, 1090), 1))
+	await _frames(2)
+	for shot: Array in [["ramp_straight", Vector2i(1700, 1080)], ["ramp_angled", Vector2i(2260, 1050)]]:
+		var at := BuildGrid.tile_corner_to_world(shot[1])
+		camera.global_position = at + Vector3(0, 150, 40)
+		camera.look_at(at)
+		await _frames(3)
+		await _screenshot(shot[0])
 	camera.set_process(true)
 
 	# Debug overlay

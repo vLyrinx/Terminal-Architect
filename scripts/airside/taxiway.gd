@@ -3,8 +3,8 @@ extends RefCounted
 ##
 ## Like a runway it runs along world X or world Z between two grid corners on
 ## its centreline (start and end), and rect is every tile its paving covers.
-## Taxiways may cross or touch each other and runways; the RouteGraph joins
-## them where they meet.
+## Pieces may overlap or touch each other. They are only paving: aircraft
+## follow the taxi lines painted on them (taxi_lines.gd).
 
 ## Stable unique ID, used in saves and commands.
 var id := 0

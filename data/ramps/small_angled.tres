@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RampDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/airside/ramp_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://ui/icons/ramp_angled.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"small_angled"
+display_name = "Small angled ramp"
+shape = "angled"
+size_class = "small"
+width = 16
+depth = 60
+cost = 5000
+description = "A rapid exit: attaches to a runway so landing aircraft can leave it at 45 degrees without stopping. Comes with its taxi line. For turboprops and regional jets."
+menu_category = "airside"
+icon = ExtResource("2_icon")

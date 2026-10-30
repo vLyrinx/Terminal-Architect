@@ -1,35 +1,44 @@
 extends Node3D
-## Automatic test for taxiways and the route graph (checklist step 17).
-## Run this scene on its own (F6). It builds a runway and taxiways through
-## commands: one crossing the runway, one ending at the runway's edge, one
-## meeting that at an L corner and one on its own. It checks the graph's nodes,
-## edges and routes after each, that the graph rebuilds when a taxiway is
-## removed, the placement rules, floor, the overlay and saving, then prints
-## PASS or FAIL for each check.
+## Automatic test for taxiway paving, runway ramps, taxi lines and the route
+## graph (checklist step 17, reworked to Airport CEO style).
+## Run this scene on its own (F6). It builds a runway, then through commands: a
+## straight ramp, taxiway paving (which adds nothing to the graph on its own),
+## taxi lines on the paving (which do), a 45 degree line, an angled ramp, and
+## removes paving to check lines under it stop being used. It checks the
+## graph's nodes, edges and routes after each, the placement rules, floor,
+## the overlay and saving, then prints PASS or FAIL for each check.
 
 const TerminalFloorScript := preload("res://scripts/building/terminal_floor.gd")
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
 const PlacedObjectsScript := preload("res://scripts/objects/placed_objects.gd")
 const RunwaysScript := preload("res://scripts/airside/runways.gd")
 const TaxiwaysScript := preload("res://scripts/airside/taxiways.gd")
+const RampsScript := preload("res://scripts/airside/ramps.gd")
+const TaxiLinesScript := preload("res://scripts/airside/taxi_lines.gd")
 const RouteGraphScript := preload("res://scripts/airside/route_graph.gd")
 const OverlayScript := preload("res://scripts/debug/route_graph_overlay.gd")
 const CommandRunnerScript := preload("res://scripts/core/command_runner.gd")
 const PlaceRunwayCmd := preload("res://scripts/core/commands/place_runway_command.gd")
 const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
 const DeleteTaxiwayCmd := preload("res://scripts/core/commands/delete_taxiway_command.gd")
+const PlaceRampCmd := preload("res://scripts/core/commands/place_ramp_command.gd")
+const DeleteRampCmd := preload("res://scripts/core/commands/delete_ramp_command.gd")
+const PlaceTaxiLineCmd := preload("res://scripts/core/commands/place_taxi_line_command.gd")
+const DeleteTaxiLinesCmd := preload("res://scripts/core/commands/delete_taxi_lines_command.gd")
 
 var _failures := 0
 var _floor: TerminalFloorScript
 var _runways: RunwaysScript
 var _taxiways: TaxiwaysScript
+var _ramps: RampsScript
+var _lines: TaxiLinesScript
 var _graph: RouteGraphScript
 var _runner: CommandRunnerScript
 var _last_failed: RefCounted
 
 
 func _ready() -> void:
-	print("TEST START | taxiways and route graph")
+	print("TEST START | taxiways, ramps, taxi lines and route graph")
 	_floor = TerminalFloorScript.new()
 	add_child(_floor)
 	var objects := PlacedObjectsScript.new()
@@ -48,11 +57,22 @@ func _ready() -> void:
 	_taxiways.terminal_floor = _floor
 	_taxiways.runways = _runways
 	add_child(_taxiways)
+	_ramps = RampsScript.new()
+	_ramps.terminal_floor = _floor
+	_ramps.runways = _runways
+	add_child(_ramps)
+	_lines = TaxiLinesScript.new()
+	_lines.taxiways = _taxiways
+	_lines.ramps = _ramps
+	_lines.runways = _runways
+	add_child(_lines)
 	_floor.runways = _runways
 	_floor.taxiways = _taxiways
+	_floor.ramps = _ramps
 	_graph = RouteGraphScript.new()
 	_graph.runways = _runways
-	_graph.taxiways = _taxiways
+	_graph.ramps = _ramps
+	_graph.taxi_lines = _lines
 	add_child(_graph)
 	var overlay := OverlayScript.new()
 	overlay.route_graph = _graph
@@ -63,95 +83,157 @@ func _ready() -> void:
 	_runner.terminal_walls = walls
 	_runner.runways = _runways
 	_runner.taxiways = _taxiways
+	_runner.ramps = _ramps
+	_runner.taxi_lines = _lines
 	add_child(_runner)
 	_runner.command_failed.connect(func(command: RefCounted) -> void: _last_failed = command)
 	Money.reset(1000000)
 
 	_expect("three taxiway sizes load: 16, 24 and 26 m wide (even)", TaxiwayCatalog.get_all().map(
 		func(d: Resource) -> int: return d.width) == [16, 24, 26])
+	_expect("six ramps load: straight and angled in each taxiway size", RampCatalog.get_all().size() == 6
+		and RampCatalog.get_def(&"medium_angled").shape == "angled" and RampCatalog.get_def(&"medium_straight").width == 24)
 	_expect("empty graph to start", _graph.get_node_count() == 0 and _graph.get_edge_count() == 0)
-	_expect("tools snap to the 10 m airside grid", BuildGrid.snap_to_airside(Vector2i(1234, 1006)) == Vector2i(1230, 1010)
-		and BuildGrid.snap_to_airside(Vector2i(4498, -3)) == Vector2i(4500, 0)
-		and BuildGrid.is_on_airside_grid(Vector2i(20, 1990)) and not BuildGrid.is_on_airside_grid(Vector2i(25, 1990)))
 
-	# Runway 09/27 along y = 1000 (paving y 977 to 1022).
+	# Runway 09/27 along y = 1000 (paving y 977 to 1023).
 	_runner.submit(PlaceRunwayCmd.new(&"medium", Vector2i(1000, 1000), Vector2i(3000, 1000)))
 	await _rebuilt()
 	_expect("runway alone: 2 nodes (09 and 27), 1 edge", _counts(2, 1))
-	var end09 := _graph.find_runway_end("09")
-	var end27 := _graph.find_runway_end("27")
-	_expect("runway end nodes are marked 09 and 27", end09 > 0 and end27 > 0 and end09 != end27)
+	var runway_id: int = _runways.get_ids()[0]
 
-	# 1. Taxiway crossing the runway north to south at x = 1500.
+	# Straight ramp south of the runway at x = 1500: outer end 23 + 40 m out, rounded to 70.
+	var straight := RampCatalog.get_def(&"medium_straight")
+	var target := _ramps.snap(straight, Vector2(1503, 1040))
+	_expect("ramp snaps to the runway's south side, outer end on the grid at (1500, 1070)",
+		target.get("runway_id", 0) == runway_id and target.get("anchor") == Vector2i(1500, 1070))
+	_expect("on the north side it goes to (1500, 930)", _ramps.snap(straight, Vector2(1497, 960)).get("anchor")
+		== Vector2i(1500, 930))
 	var before := Money.balance
-	var t1 := PlaceTaxiwayCmd.new(&"medium", Vector2i(1500, 900), Vector2i(1500, 1100))
-	_expect("crossing taxiway is built", _runner.submit(t1))
-	_expect("it costs 200 m x the price per metre",
-		before - Money.balance == 200 * TaxiwayCatalog.get_def(&"medium").cost_per_metre)
+	var r1 := PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1500, 1070), 1)
+	_expect("straight ramp is built", _runner.submit(r1))
+	_expect("it costs %s" % Money.format(straight.cost), before - Money.balance == straight.cost)
 	await _rebuilt()
-	_expect("crossing: 5 nodes, 4 edges (runway and taxiway both split)", _counts(5, 4))
-	var crossing := _graph.nearest_node(_world(Vector2i(1500, 1000)))
-	_expect("crossing node is exactly on the grid crossing (1500, 1000)",
-		(_graph.nodes[crossing].position as Vector3).is_equal_approx(_world(Vector2i(1500, 1000))))
-	_expect("crossing node is on the runway and the taxiway", _graph.nodes[crossing].on_runway
-		and _graph.nodes[crossing].on_taxiway and _graph.get_neighbours(crossing).size() == 4)
+	_expect("ramp line joins the runway centreline: 4 nodes, 3 edges", _counts(4, 3))
+	var join := _graph.nearest_node(_world(Vector2i(1500, 1000)))
+	_expect("join node is on the runway and the ramp", _graph.nodes[join].on_runway and _graph.nodes[join].on_taxiway
+		and (_graph.nodes[join].position as Vector3).is_equal_approx(_world(Vector2i(1500, 1000))))
+	_expect("ramp has a RWY AHEAD sign", _ramps.get_ramp(r1.ramp_id).node.get_node("Sign").text == "RWY AHEAD")
 
-	# 2. Taxiway from the north ending on the 10 m grid line just inside the runway edge (y = 1020).
-	var t2 := PlaceTaxiwayCmd.new(&"medium", Vector2i(2000, 1200), Vector2i(2000, 1020))
-	_expect("taxiway ending inside the runway edge is built", _runner.submit(t2))
+	# Paving on its own adds nothing.
+	_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1500, 1070), Vector2i(1500, 1300)))
 	await _rebuilt()
-	_expect("T at the runway: 8 nodes, 7 edges (joined through to the centreline)", _counts(8, 7))
-	var far_end := _graph.nearest_node(_world(Vector2i(2000, 1200)))
-	_expect("route from its far end to runway 09", _graph.find_path(far_end, _graph.find_runway_end("09")).size() >= 3)
+	_expect("taxiway paving alone adds nothing to the graph", _counts(4, 3))
 
-	# 3. Taxiway east from that one's far end: an L corner.
-	_expect("L-corner taxiway is built",
-		_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(2000, 1200), Vector2i(2500, 1200))))
+	# Taxi line down the middle of it, from the ramp's end.
+	before = Money.balance
+	var l1 := PlaceTaxiLineCmd.new(Vector2i(1500, 1070), Vector2i(1500, 1300))
+	_expect("taxi line on the paving is painted", _runner.submit(l1))
+	_expect("it costs 230 m x %s" % Money.format(Money.settings.taxi_line_cost_per_metre),
+		before - Money.balance == 230 * Money.settings.taxi_line_cost_per_metre)
+	_expect("it takes medium aircraft", _lines.get_line(l1.line_id).size_class == "medium")
 	await _rebuilt()
-	_expect("L corner: 9 nodes, 8 edges (the corner is one node)", _counts(9, 8))
-	var corner_end := _graph.nearest_node(_world(Vector2i(2500, 1200)))
-	end27 = _graph.find_runway_end("27")  # node IDs change on every rebuild
-	var path := _graph.find_path(corner_end, end27)
-	_expect("route from the L's end to runway 27", not path.is_empty() and path[0] == corner_end
-		and path[-1] == end27)
-	print("INFO | route L end -> 27: %d nodes, %.0f m: %s" % [path.size(), _graph.path_length(path),
-		path.map(func(id: int) -> Vector3: return _graph.nodes[id].position)])
-	_expect("route length is exactly 500 + 200 + 1,000 m", absf(_graph.path_length(path) - 1700.0) < 0.01)
+	_expect("taxi line joins the ramp: 5 nodes, 4 edges", _counts(5, 4))
+	var line_end := _graph.nearest_node(_world(Vector2i(1500, 1300)))
+	var path := _graph.find_path(line_end, _graph.find_runway_end("09"))
+	_expect("route from the line's end to runway 09 is 230 + 70 + 500 m",
+		not path.is_empty() and absf(_graph.path_length(path) - 800.0) < 0.01)
 
-	# 4. Taxiway on its own, far away.
-	var t4 := PlaceTaxiwayCmd.new(&"small", Vector2i(100, 100), Vector2i(300, 100))
-	_runner.submit(t4)
+	# L corner: paving and a line east along y = 1300.
+	_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1500, 1300), Vector2i(1800, 1300)))
+	var l2 := PlaceTaxiLineCmd.new(Vector2i(1500, 1300), Vector2i(1800, 1300))
+	_expect("line round the L corner is painted", _runner.submit(l2))
 	await _rebuilt()
-	_expect("lone taxiway: 11 nodes, 9 edges", _counts(11, 9))
-	_expect("no route from the lone taxiway to the runway",
-		_graph.find_path(_graph.nearest_node(_world(Vector2i(100, 100))), _graph.find_runway_end("09")).is_empty())
+	_expect("L corner: 6 nodes, 5 edges (the corner is one node)", _counts(6, 5))
 
-	# Removing rebuilds
-	_runner.submit(DeleteTaxiwayCmd.new(t4.taxiway_id))
+	# 45 degree line cutting the corner.
+	var l3 := PlaceTaxiLineCmd.new(Vector2i(1500, 1290), Vector2i(1510, 1300))
+	_expect("45 degree line across the corner is painted", _runner.submit(l3))
 	await _rebuilt()
-	_expect("removing the lone taxiway rebuilds: 9 nodes, 8 edges", _counts(9, 8))
+	_expect("it splits both lines it meets: 8 nodes, 8 edges", _counts(8, 8))
+
+	# Line rules
+	_expect("line off the paving is refused",
+		not _runner.submit(PlaceTaxiLineCmd.new(Vector2i(1600, 1100), Vector2i(1700, 1100)))
+		and _last_failed.error == "Taxi lines go on taxiway paving")
+	_expect("line onto the runway is refused",
+		not _runner.submit(PlaceTaxiLineCmd.new(Vector2i(1500, 1070), Vector2i(1500, 990)))
+		and _last_failed.error.begins_with("Taxi lines can't go on a runway"))
+	_expect("line off the 10 m grid is refused",
+		not _runner.submit(PlaceTaxiLineCmd.new(Vector2i(1505, 1100), Vector2i(1505, 1200)))
+		and _last_failed.error.begins_with("Taxi lines start and end on the 10 m grid"))
+	_expect("line at an odd angle is refused",
+		not _runner.submit(PlaceTaxiLineCmd.new(Vector2i(1500, 1100), Vector2i(1510, 1130)))
+		and _last_failed.error.begins_with("Taxi lines run along the grid or at 45 degrees"))
+
+	# Paving removed under a line: it stays but isn't used; put back: used again.
+	var east_paving: int = _taxiways.get_taxiway_at(Vector2i(1700, 1300))
+	_runner.submit(DeleteTaxiwayCmd.new(east_paving))
+	await _rebuilt()
+	_expect("line off its paving is kept but not usable", _lines.get_count() == 3
+		and not _lines.get_line(l2.line_id).is_usable() and _lines.get_line(l3.line_id).is_usable())
+	_expect("graph drops it: 7 nodes, 6 edges", _counts(7, 6))
 	_runner.undo_last()
 	await _rebuilt()
-	_expect("undo puts it back: 11 nodes, 9 edges", _counts(11, 9))
+	_expect("paving back: line usable again, 8 nodes, 8 edges", _lines.get_line(l2.line_id).is_usable() and _counts(8, 8))
 
-	# Placement rules
-	_expect("off the 10 m grid is refused", not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(50, 50), Vector2i(55, 50)))
-		and _last_failed.error.begins_with("Taxiways start and end on the 10 m grid"))
-	_expect("diagonal is refused", not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(50, 50), Vector2i(90, 80))))
-	_expect("along inside the runway is refused",
-		not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(1200, 1010), Vector2i(1400, 1010)))
-		and _last_failed.error.begins_with("Taxiways can cross a runway"))
-	_expect("off the plot is refused", not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(0, 50), Vector2i(0, 200)))
-		and _last_failed.error == "Doesn't fit on the plot")
+	# Removing lines
+	before = Money.balance
+	_expect("lines near a drag are found and removed", _runner.submit(DeleteTaxiLinesCmd.new(
+		_lines.get_lines_near(Vector2(1600, 1302), Vector2(1700, 1302), 3.0))) and _lines.get_line(l2.line_id) == null)
+	_expect("removing refunds part of the price", Money.balance - before == Money.refund_for(
+		300 * Money.settings.taxi_line_cost_per_metre))
+	_runner.undo_last()
+	await _rebuilt()
+	_expect("undo paints it back with the same ID", _lines.get_line(l2.line_id) != null and _counts(8, 8))
 
-	# Floor and taxiways
-	_expect("floor preview skips taxiway tiles (240 of 400)", _floor.count_changes(Rect2i(1480, 1030, 40, 10), true) == 160)
-	_expect("floor preview counts runway and taxiway overlap once (488 of 600)",
-		_floor.count_changes(Rect2i(1480, 1015, 40, 15), true) == 112)
-	_floor.set_rect(Rect2i(600, 600, 30, 30), true)
-	_expect("taxiway over floor is refused",
-		not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(610, 500), Vector2i(610, 700)))
-		and _last_failed.error == "Blocked by terminal floor")
+	# Ramp removed: the network is cut off from the runway; undo joins it again.
+	_runner.submit(DeleteRampCmd.new(r1.ramp_id))
+	await _rebuilt()
+	_expect("without the ramp there is no route to the runway",
+		_graph.find_path(_graph.nearest_node(_world(Vector2i(1500, 1300))), _graph.find_runway_end("09")).is_empty())
+	_runner.undo_last()
+	await _rebuilt()
+	_expect("ramp back: route to the runway again",
+		not _graph.find_path(_graph.nearest_node(_world(Vector2i(1500, 1300))), _graph.find_runway_end("09")).is_empty())
+
+	# Angled ramp north of the runway, leaning east: rapid exit for aircraft landing on 09.
+	var angled := RampCatalog.get_def(&"medium_angled")
+	var a_anchor: Vector2i = _ramps.snap(angled, Vector2(2502, 950)).anchor
+	_expect("angled ramp's outer end is 23 + 60 m out, rounded to 90: (2500, 910)", a_anchor == Vector2i(2500, 910))
+	var r2 := PlaceRampCmd.new(&"medium_angled", runway_id, a_anchor, 1)
+	_expect("angled ramp is built", _runner.submit(r2))
+	await _rebuilt()
+	var exit_end := _graph.nearest_node(_world(a_anchor))
+	var turn_off := _graph.nearest_node(_world(Vector2i(2390, 1000)))
+	_expect("its line starts on the runway centreline 110 m before the exit",
+		(_graph.nodes[turn_off].position as Vector3).is_equal_approx(_world(Vector2i(2390, 1000)))
+		and _graph.nodes[turn_off].on_runway and _graph.nodes[turn_off].on_taxiway)
+	_expect("route from its outer end to runway 27", not _graph.find_path(exit_end, _graph.find_runway_end("27")).is_empty())
+	var ramp_line: PackedVector2Array = _ramps.get_ramp(r2.ramp_id).get_corner_points()
+	var longest := Vector2.ZERO
+	for i in range(1, ramp_line.size()):
+		if ramp_line[i].distance_to(ramp_line[i - 1]) > longest.length():
+			longest = ramp_line[i] - ramp_line[i - 1]
+	_expect("its longest part runs north-east at 45 degrees", longest.x > 0.0 and longest.y < 0.0
+		and absf(absf(longest.x) - absf(longest.y)) < 0.01)
+
+	# Ramp rules
+	_expect("ramp on top of another is refused",
+		not _runner.submit(PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1500, 1070), 1))
+		and _last_failed.error == "Overlaps another ramp")
+	_expect("ramp not against the runway is refused",
+		not _runner.submit(PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1800, 1080), 1))
+		and _last_failed.error == "Ramps sit against the side of a runway")
+	_expect("ramp at the very end of the runway is refused",
+		not _runner.submit(PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1010, 1070), 1))
+		and _last_failed.error == "Too close to the end of the runway")
+	_expect("taxiway paving on a runway is refused",
+		not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(1200, 900), Vector2i(1200, 1100)))
+		and _last_failed.error.begins_with("Taxiways can't go on a runway"))
+
+	# Floor
+	var ramp_rect: Rect2i = _ramps.get_ramp(r1.ramp_id).rect
+	_expect("no floor is laid on a ramp", _floor.count_changes(ramp_rect, true) == 0)
 
 	# Overlay
 	overlay.set_forced(true)
@@ -160,11 +242,16 @@ func _ready() -> void:
 	_expect("overlay hides again", not overlay.visible)
 
 	# Save and load
-	var loaded: RefCounted = CommandRunnerScript.command_from_dict(t1.to_dict())
-	_expect("place_taxiway command saves and loads", loaded != null and loaded.def_id == &"medium"
-		and loaded.start == t1.start and loaded.end == t1.end and loaded.taxiway_id == t1.taxiway_id)
-	var del: RefCounted = CommandRunnerScript.command_from_dict(DeleteTaxiwayCmd.new(5).to_dict())
-	_expect("delete_taxiway command saves and loads", del != null and del.taxiway_id == 5)
+	var loaded: RefCounted = CommandRunnerScript.command_from_dict(r2.to_dict())
+	_expect("place_ramp command saves and loads", loaded != null and loaded.def_id == &"medium_angled"
+		and loaded.runway_id == runway_id and loaded.anchor == a_anchor and loaded.lean == 1 and loaded.ramp_id == r2.ramp_id)
+	loaded = CommandRunnerScript.command_from_dict(DeleteRampCmd.new(4).to_dict())
+	_expect("delete_ramp command saves and loads", loaded != null and loaded.ramp_id == 4)
+	loaded = CommandRunnerScript.command_from_dict(l3.to_dict())
+	_expect("place_taxi_line command saves and loads", loaded != null and loaded.a == l3.a and loaded.b == l3.b
+		and loaded.line_id == l3.line_id)
+	loaded = CommandRunnerScript.command_from_dict(DeleteTaxiLinesCmd.new([2, 5] as Array[int]).to_dict())
+	_expect("delete_taxi_lines command saves and loads", loaded != null and loaded.line_ids == [2, 5])
 
 	Money.reset(Money.settings.starting_money)
 	print("TEST DONE | %s" % ("ALL PASSED" if _failures == 0 else "%d FAILED" % _failures))

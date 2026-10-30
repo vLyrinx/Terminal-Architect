@@ -1,15 +1,16 @@
 extends Node3D
-## Taxiways (checklist step 17): stores every taxiway piece and draws it.
+## Taxiways (checklist step 17): stores every piece of taxiway paving and draws it.
 ##
 ## Each piece is straight along world X or Z, placed by grid corners on its
 ## centreline with the same footprint rule as runways (runways.gd footprint()),
 ## so a taxiway lines up with runways and other taxiways of the same width
-## parity. Pieces may overlap each other and cross runways; they may not cover
-## terminal floor or walls, or run along inside a runway. The paving sits a
-## little lower than runway paving, so where a taxiway crosses a runway the
-## runway and its markings stay on top. A yellow centreline is drawn on each piece.
-## Changes come from PlaceTaxiwayCommand and DeleteTaxiwayCommand; the
-## RouteGraph listens to taxiway_added / taxiway_removed.
+## parity. Pieces may overlap each other and touch a runway's edge, but not
+## cover a runway (runway ramps join runways), terminal floor, walls or stands.
+## As in Airport CEO, paving is only the ground: aircraft follow the taxi
+## lines painted on it (taxi_lines.gd), which TaxiLines checks again whenever
+## paving is added or removed (taxiway_added / taxiway_removed). The paving
+## sits a little lower than runway paving, so the runway stays on top where
+## they touch. Changes come from PlaceTaxiwayCommand and DeleteTaxiwayCommand.
 ##
 ## Keep this node at the world origin.
 
@@ -22,12 +23,10 @@ const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
 
 ## Lower than runway paving (RunwaysScript.PAVING_HEIGHT), so runways draw on top.
 const PAVING_HEIGHT := 0.025
-## The centreline stays below runway paving, so it is hidden where it crosses a runway.
+## Taxi lines (taxi_lines.gd) sit this far above the paving.
 const MARKING_LIFT := 0.01
 const PAVING_COLOR := Color(0.33, 0.35, 0.38)
 const PAVING_SIDE_COLOR := Color(0.25, 0.27, 0.3)
-const CENTRELINE_COLOR := Color(0.95, 0.76, 0.19)
-const CENTRELINE_WIDTH := 0.5
 
 ## The TerminalFloor node (terminal_floor.gd). Taxiways can't go over floor.
 @export var terminal_floor: Node3D
@@ -113,12 +112,8 @@ func check_placement(def: Resource, start: Vector2i, end: Vector2i) -> String:
 	var rect := footprint(def, start, end)
 	if not Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES).encloses(rect):
 		return "Doesn't fit on the plot"
-	if runways:
-		# Overlapping a parallel runway means running along inside it (touching is fine).
-		var along_x := end.x != start.x
-		for id: int in runways.get_runways_in(rect):
-			if (runways.get_runway(id).get_axis().x != 0) == along_x:
-				return "Taxiways can cross a runway, not run along it"
+	if runways and not runways.get_runways_in(rect).is_empty():
+		return "Taxiways can't go on a runway: use a runway ramp"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
 		return "Blocked by terminal floor"
 	if stands and not stands.get_stands_in(rect).is_empty():
@@ -186,13 +181,6 @@ func _build_node(taxiway: TaxiwayScript) -> Node3D:
 	var lo := BuildGrid.tile_corner_to_world(taxiway.rect.position)
 	var hi := BuildGrid.tile_corner_to_world(taxiway.rect.end)
 	builder.add_box(Vector3(lo.x, 0.0, lo.z), Vector3(hi.x, PAVING_HEIGHT, hi.z), PAVING_SIDE_COLOR, PAVING_COLOR)
-
-	# Centreline, from end to end (it runs on into crossings, as at a real junction).
-	var along := (taxiway.b - taxiway.a).normalized()
-	var across := along.cross(Vector3.UP) * CENTRELINE_WIDTH * 0.5
-	var y := Vector3.UP * (PAVING_HEIGHT + MARKING_LIFT)
-	builder.add_quad([taxiway.a + y - across, taxiway.b + y - across, taxiway.b + y + across, taxiway.a + y + across],
-		Vector3.UP, CENTRELINE_COLOR)
 
 	var mi := MeshInstance3D.new()
 	mi.name = "Mesh"

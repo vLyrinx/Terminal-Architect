@@ -24,6 +24,10 @@ const PlaceTaxiwayCommandScript := preload("res://scripts/core/commands/place_ta
 const DeleteTaxiwayCommandScript := preload("res://scripts/core/commands/delete_taxiway_command.gd")
 const PlaceStandCommandScript := preload("res://scripts/core/commands/place_stand_command.gd")
 const DeleteStandCommandScript := preload("res://scripts/core/commands/delete_stand_command.gd")
+const PlaceRampCommandScript := preload("res://scripts/core/commands/place_ramp_command.gd")
+const DeleteRampCommandScript := preload("res://scripts/core/commands/delete_ramp_command.gd")
+const PlaceTaxiLineCommandScript := preload("res://scripts/core/commands/place_taxi_line_command.gd")
+const DeleteTaxiLinesCommandScript := preload("res://scripts/core/commands/delete_taxi_lines_command.gd")
 ## Oldest commands are dropped from the history beyond this.
 const MAX_HISTORY := 500
 
@@ -42,6 +46,10 @@ const MAX_HISTORY := 500
 @export var taxiways: Node3D
 ## The Stands node (stands.gd).
 @export var stands: Node3D
+## The Ramps node (ramps.gd).
+@export var ramps: Node3D
+## The TaxiLines node (taxi_lines.gd).
+@export var taxi_lines: Node3D
 
 ## Commands that ran, oldest first.
 var history: Array = []
@@ -99,6 +107,14 @@ static func command_from_dict(data: Dictionary) -> RefCounted:
 			command = PlaceStandCommandScript.new()
 		"delete_stand":
 			command = DeleteStandCommandScript.new()
+		"place_ramp":
+			command = PlaceRampCommandScript.new()
+		"delete_ramp":
+			command = DeleteRampCommandScript.new()
+		"place_taxi_line":
+			command = PlaceTaxiLineCommandScript.new()
+		"delete_taxi_lines":
+			command = DeleteTaxiLinesCommandScript.new()
 		_:
 			return null
 	command.load_dict(data)
