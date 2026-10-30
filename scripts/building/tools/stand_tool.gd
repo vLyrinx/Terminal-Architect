@@ -1,5 +1,7 @@
 extends "res://scripts/building/build_tool.gd"
-## Stand tool (checklist step 18): place aircraft stands that open onto a taxiway.
+## Stand tool (checklist step 18): place aircraft stands, connected to a
+## taxiway or not yet (for planning terminals; they take aircraft once paving
+## reaches their entry).
 ##
 ##   Left click    place the stand (as a PlaceStandCommand)
 ##   R             turn the entry edge 90 degrees (Shift + R: the other way)
@@ -7,7 +9,7 @@ extends "res://scripts/building/build_tool.gd"
 ## which runs from the entry edge to the stop bar. Near a taxiway the entry
 ## edge snaps flush against the taxiway's paving; across the lead-in the stand
 ## stays on the 10 m grid. The label shows the size class, the aircraft that
-## fit and the price, or why it can't be built.
+## fit, the price and whether it will be connected, or why it can't be built.
 ## The route graph overlay is shown while this tool is in use. One build menu
 ## entry per size in data/stands/.
 
@@ -99,7 +101,7 @@ func release(_tile: Vector2i, _in_plot: bool) -> void:
 
 
 func get_hint() -> String:
-	return "Click: place stand   R / Shift+R: turn   Entry edge (yellow line) must touch a taxiway   " + \
+	return "Click: place stand   R / Shift+R: turn   Entry edge (yellow line) on a taxiway connects it   " + \
 		"F4: route graph   Right click / Esc: cancel"
 
 
@@ -172,8 +174,10 @@ func _update_ghost(def: Resource) -> void:
 	var heading := "%s: %s   %d x %d m" % [def.display_name, def.get_size_class().display_name.to_lower(),
 		rect.size.x, rect.size.y]
 	if reason == "":
-		_label.text = "%s   %s\nFits %s\nOpens onto the taxiway" % [heading, Money.format(p.cost), _fits_text(def)]
-		_label.modulate = Color.WHITE
+		var problem: String = stands.connection_problem(def, _anchor, _facing)
+		var link := "Opens onto the taxiway" if problem == "" else "Not connected: %s" % problem.to_lower()
+		_label.text = "%s   %s\nFits %s\n%s" % [heading, Money.format(p.cost), _fits_text(def), link]
+		_label.modulate = Color.WHITE if problem == "" else StandsScript.NOT_CONNECTED_COLOR
 	else:
 		_label.text = "%s\n%s" % [heading, reason]
 		_label.modulate = Color(1.0, 0.75, 0.75)

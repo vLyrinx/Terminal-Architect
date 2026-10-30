@@ -131,12 +131,19 @@ func _ready() -> void:
 	_expect("graph: second stand adds 3 nodes and 3 edges", _counts(10, 8))
 
 	# Placement rules
-	_expect("stand away from any taxiway is refused",
-		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(2000, 500), 0))
-		and _last_failed.error == "Entry must open onto a taxiway")
-	_expect("stand facing a small taxiway is refused",
-		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(1200, 1492), 0))
-		and _last_failed.error == "Needs 24 m of taxiway in front (16 m here)")
+	var medium_def := StandCatalog.get_def(&"medium")
+	_expect("a stand away from any taxiway would not be connected",
+		_stands.connection_problem(medium_def, Vector2i(2000, 500), 0) == "Entry doesn't open onto a taxiway")
+	_expect("a stand facing a small taxiway would not be connected",
+		_stands.connection_problem(medium_def, Vector2i(1200, 1492), 0) == "Needs 24 m of taxiway in front (16 m here)")
+	var free := PlaceStandCmd.new(&"medium", Vector2i(2000, 500), 0)
+	_expect("a stand away from any taxiway can still be placed, not connected",
+		_runner.submit(free) and not _stands.get_stand(free.stand_id).has_taxiway()
+		and _stands.get_stand(free.stand_id).label.text.contains("Not connected"))
+	await _rebuilt()
+	_expect("it has no route to a taxiway", _graph.get_neighbours(_graph.find_stand(free.stand_id)).size() == 1)
+	_runner.undo_last()
+	await _rebuilt()
 	_expect("stand overlapping another stand is refused",
 		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(1220, 988), 0))
 		and _last_failed.error == "Overlaps another stand")

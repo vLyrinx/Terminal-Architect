@@ -2,11 +2,12 @@ extends Node3D
 ## Stands (checklist step 18): stores every aircraft stand and draws it.
 ##
 ## A stand is a rectangle of concrete apron sized by its aircraft size class
-## (StandDef.get_size()), with its entry edge flush against taxiway paving.
-## Straight out from the middle of the entry edge there must be at least as
-## much paving as the stand's taxiway size needs (TaxiwayDef.width);
-## otherwise the stand can't be built. If that paving is later removed the
-## stand stays but shows as not connected. Stands may not overlap runways,
+## (StandDef.get_size()), normally with its entry edge flush against taxiway
+## paving. It is connected when straight out from the middle of the entry edge
+## there is at least as much paving as the stand's taxiway size needs
+## (TaxiwayDef.width). Stands can be placed anywhere, connected or not, so the
+## player can plan terminals first; an unconnected stand shows as not
+## connected and takes no aircraft until paving reaches it. Stands may not overlap runways,
 ## taxiway paving, ramps, other stands or terminal floor. Each stand has a yellow lead-in line and stop bar, a red
 ## boundary line, and a label with its number, size class and connection.
 ## The RouteGraph adds a lead-in edge from each stand's stop bar out to a taxi
@@ -199,9 +200,16 @@ func check_placement(def: Resource, anchor: Vector2i, facing: int) -> String:
 		return "Overlaps another stand"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
 		return "Blocked by terminal floor"
+	return ""
+
+
+## Why a stand here wouldn't be connected to a taxiway, or "" if it would be.
+## Stands can be built either way (so terminals can be planned first); they
+## only take aircraft once connected.
+func connection_problem(def: Resource, anchor: Vector2i, facing: int) -> String:
 	var paved := paving_depth(anchor, facing)
 	if paved == 0:
-		return "Entry must open onto a taxiway"
+		return "Entry doesn't open onto a taxiway"
 	if paved < needed_depth(def):
 		return "Needs %d m of taxiway in front (%d m here)" % [needed_depth(def), paved]
 	return ""
