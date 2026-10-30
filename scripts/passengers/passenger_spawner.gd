@@ -170,6 +170,21 @@ func get_entrances() -> Array[Dictionary]:
 	return _entrances
 
 
+## Adds a visible passenger for an arriving flight (step 33) at a world point,
+## facing yaw, tied to the flight. The caller sends them on with walk().
+func add_arriving(flight: FlightScript, position: Vector3, yaw: float) -> PassengerScript:
+	var p := PassengerScript.new()
+	p.id = _next_id
+	_next_id += 1
+	p.flight = flight
+	p.arrival_time = GameClock.game_time
+	p.state = State.TO_EXIT
+	p.crowd_id = crowd.add(position, yaw) if crowd != null else -1
+	flight.passengers.append(p)
+	_passengers[p.id] = p
+	return p
+
+
 ## Removes a passenger completely (later steps call this when they leave or board).
 func remove_passenger(p: PassengerScript) -> void:
 	_passengers.erase(p.id)

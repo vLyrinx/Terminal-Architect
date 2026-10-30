@@ -6,6 +6,9 @@ extends Node
 ##   Access.LANDSIDE  landside and unzoned floor, the security zone, and the
 ##                    ground just outside the terminal (where people arrive)
 ##   Access.AIRSIDE   the security zone and airside
+##   Access.ARRIVALS  any terminal floor, but not the ground outside (arriving
+##                    passengers come in from the apron by a door and walk
+##                    through the building to the exit, step 33)
 ## So a passenger who hasn't been through security can't reach airside, and
 ## one who has can't walk back landside.
 ##
@@ -24,7 +27,7 @@ extends Node
 ## were updated. Anyone following a path should ask for a new one.
 signal paths_changed
 
-enum Access { LANDSIDE, AIRSIDE }
+enum Access { LANDSIDE, AIRSIDE, ARRIVALS }
 
 const TerminalZonesScript := preload("res://scripts/building/terminal_zones.gd")
 const TerminalWallsScript := preload("res://scripts/building/terminal_walls.gd")
@@ -124,6 +127,8 @@ func get_region() -> Rect2i:
 static func zone_allows(zone: int, has_floor: bool, access: int) -> bool:
 	if access == Access.AIRSIDE:
 		return has_floor and (zone == Zone.SECURITY or zone == Zone.AIRSIDE)
+	if access == Access.ARRIVALS:
+		return has_floor
 	return not has_floor or zone == Zone.NONE or zone == Zone.LANDSIDE or zone == Zone.SECURITY
 
 

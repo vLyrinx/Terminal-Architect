@@ -1,4 +1,4 @@
-[gd_scene load_steps=58 format=3]
+[gd_scene load_steps=59 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -54,6 +54,7 @@
 [ext_resource type="Script" path="res://scripts/passengers/check_in.gd" id="66_checkin"]
 [ext_resource type="Script" path="res://scripts/passengers/security.gd" id="67_security"]
 [ext_resource type="Script" path="res://scripts/passengers/gates.gd" id="68_gates"]
+[ext_resource type="Script" path="res://scripts/passengers/arrivals.gd" id="69_arrivals"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -206,7 +207,7 @@ terminal_paths = NodePath("../TerminalPaths")
 spawner = NodePath("../PassengerSpawner")
 check_in = NodePath("../CheckIn")
 
-[node name="Gates" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "terminal_paths", "spawner", "security", "stands")]
+[node name="Gates" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "terminal_paths", "spawner", "security", "stands", "arrivals")]
 script = ExtResource("68_gates")
 placed_objects = NodePath("../PlacedObjects")
 terminal_floor = NodePath("../TerminalFloor")
@@ -216,6 +217,15 @@ terminal_paths = NodePath("../TerminalPaths")
 spawner = NodePath("../PassengerSpawner")
 security = NodePath("../Security")
 stands = NodePath("../Stands")
+arrivals = NodePath("../Arrivals")
+
+[node name="Arrivals" type="Node" parent="." node_paths=PackedStringArray("air_traffic", "terminal_floor", "terminal_paths", "spawner", "gates")]
+script = ExtResource("69_arrivals")
+air_traffic = NodePath("../AirTraffic")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_paths = NodePath("../TerminalPaths")
+spawner = NodePath("../PassengerSpawner")
+gates = NodePath("../Gates")
 
 [node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
 script = ExtResource("41_graphoverlay")

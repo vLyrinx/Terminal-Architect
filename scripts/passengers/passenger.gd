@@ -1,18 +1,19 @@
 class_name Passenger
 extends RefCounted
-## One departing passenger (checklist step 29), created by PassengerSpawner
-## for a departure flight. Tied to the flight both ways (passenger.flight and
+## One passenger (checklist step 29): a departing one created by PassengerSpawner
+## for a departure flight, or an arriving one leaving an aircraft (step 33).
+## Tied to the flight both ways (passenger.flight and
 ## flight.passengers), so later steps (check-in, security, gate, boarding)
 ## can route them and know when they need to be where.
 
 enum State { EXPECTED, ARRIVING, AT_ENTRANCE, WAITING_CHECKIN, TO_CHECKIN, QUEUING_CHECKIN, CHECKING_IN, CHECKED_IN,
 	TO_SECURITY, QUEUING_SECURITY, SCREENING, AIRSIDE, TO_GATE, AT_GATE, BOARDING, TO_AIRCRAFT,
-	BOARDED }
+	BOARDED, TO_EXIT, EXITED }
 
 const STATE_NAMES := ["Expected", "Arriving", "At entrance", "Waiting for a check-in desk", "Going to check-in",
 	"Queuing for check-in", "Checking in", "Checked in", "Going to security", "Queuing for security",
 	"Going through security", "Airside", "Going to the gate", "Waiting at the gate", "Boarding", "Walking to the aircraft",
-	"On board"]
+	"On board", "Walking to the exit", "Left the airport"]
 
 ## Unique for this game session.
 var id := 0

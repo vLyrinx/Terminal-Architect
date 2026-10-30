@@ -131,6 +131,8 @@ class Boarding:
 @export var security: SecurityScript
 ## Stands node (optional): flights use the gate nearest their stand.
 @export var stands: Node3D
+## Arrivals node (optional, step 33): boarding waits until the arriving passengers are off.
+@export var arrivals: Node
 @export var floor_index := 0
 
 ## Gate desk id -> Gate.
@@ -144,6 +146,8 @@ var _flight_gate := {}
 var _waiting: Array[PassengerScript] = []
 var _no_gate_warned := {}
 var _no_exit_warned := {}
+## Doors between airside floor and the apron (worked out with the gates).
+var _exits: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
 
 
@@ -317,6 +321,9 @@ func _try_open(b: Boarding, now: int) -> void:
 	if now < f.scheduled_time and f.stand_id >= 0 and f.pair != null \
 			and f.pair.status != FlightScript.Status.ON_STAND:
 		return
+	# And for the arriving passengers to get off first (step 33).
+	if arrivals != null and f.pair != null and not arrivals.is_deplaned(f.pair):
+		return
 	var gate := get_gate_for(f)
 	if gate == null:
 		return
@@ -402,19 +409,35 @@ func _scanned(p: PassengerScript) -> void:
 			spawner.walk(r, door, _board, true), true))
 
 
+## The spot on the ground beside the front door (on the left) of an aircraft
+## parked on a stand, or Vector3.INF if there is no such stand.
+func get_aircraft_door_at(stand_id: int) -> Vector3:
+	if stands == null or stand_id < 0:
+		return Vector3.INF
+	var stand = stands.get_stand(stand_id)
+	if stand == null:
+		return Vector3.INF
+	var nose: Vector3 = stand.get_nose_direction()
+	var left := Vector3(nose.z, 0.0, -nose.x)
+	var door: Vector3 = stand.stop + nose * DOOR_AHEAD + left * DOOR_SIDE
+	door.y = 0.0
+	return door
+
+
+## Doors between airside floor and the apron, as {inside, outside} tiles.
+func get_apron_doors() -> Array[Dictionary]:
+	_update_gates()
+	return _exits
+
+
 ## Where passengers walk to on the apron: beside the front door on the left
 ## of the aircraft parked on the flight's stand, or (with no stand) a little
 ## way out from the gate's door.
 func _aircraft_door(f: FlightScript, gate: Gate) -> Vector3:
 	var jitter := Vector3(_rng.randf_range(-0.4, 0.4), 0.0, _rng.randf_range(-0.4, 0.4))
-	if stands != null and f.stand_id >= 0:
-		var stand = stands.get_stand(f.stand_id)
-		if stand != null:
-			var nose: Vector3 = stand.get_nose_direction()
-			var left := Vector3(nose.z, 0.0, -nose.x)
-			var door: Vector3 = stand.stop + nose * DOOR_AHEAD + left * DOOR_SIDE + jitter
-			door.y = 0.0
-			return door
+	var door := get_aircraft_door_at(f.stand_id)
+	if door.is_finite():
+		return door + jitter
 	var spot := gate.exit_outside + gate.exit_out * APRON_WALK + jitter
 	spot.y = 0.0
 	return spot
@@ -521,10 +544,10 @@ func _update_gates() -> void:
 				seat.taken.seat = seat
 				old_seats.erase("%d:%d" % [id, i])
 			gate.seats.append(seat)
-	var exits := _apron_doors()
+	_exits = _apron_doors()
 	for gate: Gate in _gates.values():
 		gate.stand_tiles = _stand_tiles(gate, seat_tiles)
-		_pick_exit(gate, exits)
+		_pick_exit(gate, _exits)
 	# Anyone whose gate or seat went away finds their place again.
 	var lost: Array[PassengerScript] = []
 	for seat: GateSeat in old_seats.values():
