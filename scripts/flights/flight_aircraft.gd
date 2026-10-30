@@ -12,10 +12,17 @@ extends Node3D
 ## never faster than traffic_limit (set by AirTraffic for aircraft ahead). It
 ## waits short of a runway at the route's hold point until hold_cleared. Once
 ## at the end of a route to a stand it is parked: it stays there, not moving.
+##
+## Pushback (step 26): a route started with start_pushback() has a tug at the
+## nose gear for its first (reverse) leg. At the end of that leg the aircraft
+## waits TUG_RELEASE while the tug comes off, then taxis on by itself.
 
 const FlightScript := preload("res://scripts/flights/flight.gd")
+const PushbackTugScript := preload("res://scripts/vehicles/pushback_tug.gd")
 ## Taxiing never slower than this (real m/s) while it may move, so stops are reached.
 const CREEP_SPEED := 0.5
+## Game seconds stopped after a pushback while the tug is unhooked.
+const TUG_RELEASE := 120.0
 
 ## A path event passed: "gear_down", "touchdown", "stopped", "lift_off", "gear_up", "end".
 signal path_event(aircraft: Node3D, event_name: String)
@@ -23,6 +30,8 @@ signal path_event(aircraft: Node3D, event_name: String)
 signal path_finished(aircraft: Node3D)
 ## The end of the taxi route was reached.
 signal taxi_finished(aircraft: Node3D)
+## The pushback leg is done and the tug is off: it taxis on by itself.
+signal pushback_finished(aircraft: Node3D)
 
 var flight: FlightScript
 var path: FlightPath
@@ -45,6 +54,14 @@ var traffic_limit := INF
 var hold_cleared := true
 ## Standing on a stand.
 var parked := false
+## Game time the turnaround on the stand is done (set by AirTraffic on arrival).
+var ready_at := 0
+## Distance along the route where the pushback ends, or -1 when not pushing back.
+var pushback_end := -1.0
+## The tug while pushing back.
+var tug: Node3D
+## Game seconds left to wait (tug unhooking) before moving on.
+var _pause_left := 0.0
 
 var _since_tick := 0.0
 var _draw_limit := 0.0
@@ -79,8 +96,27 @@ func start_taxi(route: TaxiRoute) -> void:
 	hold_cleared = route.hold_at < 0.0
 	traffic_limit = INF
 	parked = false
+	pushback_end = -1.0
+	_pause_left = 0.0
 	_draw_limit = 0.0
 	_update_visual()
+
+
+## Starts being pushed back along the route's first (reverse) leg by a tug,
+## then taxis the rest of the route.
+func start_pushback(route: TaxiRoute) -> void:
+	start_taxi(route)
+	pushback_end = route.first_stop()
+	if tug == null:
+		tug = PushbackTugScript.new()
+		tug.name = "PushbackTug"
+		add_child(tug)
+	var gear_z: float = model.nose_gear_z if model and "nose_gear_z" in model else -12.0
+	tug.position = Vector3(0.0, 0.0, gear_z)
+
+
+func is_pushing_back() -> bool:
+	return pushback_end >= 0.0
 
 
 ## Stops where it is and stays (on a stand).
@@ -142,6 +178,11 @@ func get_height() -> float:
 
 
 func _advance_taxi(game_seconds: float) -> void:
+	if _pause_left > 0.0:
+		_pause_left -= game_seconds
+		if _pause_left <= 0.0:
+			_end_pushback()
+		return
 	var real_seconds := game_seconds / FlightPath.TIME_STRETCH
 	var stop := taxi.next_stop(taxi_distance, hold_cleared)
 	var limit := minf(minf(taxi.speed_limit_at(taxi_distance), TaxiRoute.stopping_speed(stop - taxi_distance)),
@@ -155,8 +196,20 @@ func _advance_taxi(game_seconds: float) -> void:
 		taxi_speed = 0.0
 	_draw_limit = stop
 	_update_visual()
+	if is_pushing_back() and taxi_distance >= pushback_end - 0.01:
+		_pause_left = TUG_RELEASE
+		return
 	if taxi_distance >= taxi.length - 0.01:
 		taxi_finished.emit(self)
+
+
+func _end_pushback() -> void:
+	_pause_left = 0.0
+	pushback_end = -1.0
+	if tug:
+		tug.queue_free()
+		tug = null
+	pushback_finished.emit(self)
 
 
 func _process(delta: float) -> void:

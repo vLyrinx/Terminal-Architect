@@ -6,8 +6,8 @@ extends RefCounted
 ## Corners between graph edges are rounded with arcs (up to TURN_RADIUS, less
 ## where the edges are short), and where the route doubles back on itself
 ## (backtracking on a runway) the aircraft makes a teardrop U-turn of
-## U_TURN_RADIUS. A leg can be driven in reverse (leaving a stand, until
-## pushback tugs arrive in step 26); legs are joined with a stop between them.
+## U_TURN_RADIUS. A leg can be driven in reverse (pushed back off a stand);
+## legs are joined with a stop between them.
 ##
 ## Every SAMPLE_STEP metres the route stores the position, the way the nose
 ## points and the highest speed there: slower in turns, on stand lead-ins and in
@@ -142,6 +142,11 @@ func next_stop(s: float, cleared: bool) -> float:
 	if not cleared and hold_at >= 0.0 and hold_at > s - 0.01:
 		stop = minf(stop, hold_at)
 	return stop
+
+
+## Distance of the first stop between legs (the end of a pushback), or the end.
+func first_stop() -> float:
+	return _stops[0] if not _stops.is_empty() else length
 
 
 ## The first distance along the route where test(position) is true, or -1.

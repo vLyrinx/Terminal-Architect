@@ -85,8 +85,8 @@ func _ready() -> void:
 	Money.reset(1000000)
 
 	var def := StandCatalog.get_def(&"medium")
-	_expect("medium stand loads: narrow-body class, 50 x 60 m, needs a medium taxiway", def != null
-		and def.size_class == "narrow_body" and def.get_size() == Vector2i(50, 60) and def.get_taxiway_class() == "medium")
+	_expect("medium stand loads: narrow-body class, 50 x 70 m, needs a medium taxiway", def != null
+		and def.size_class == "narrow_body" and def.get_size() == Vector2i(50, 70) and def.get_taxiway_class() == "medium")
 	_expect("A320 and 737-800 fit the medium stand", def.takes(&"a320") and def.takes(&"b738")
 		and def.get_fitting_types().size() == 2)
 
@@ -103,9 +103,9 @@ func _ready() -> void:
 	_expect("stand south of the taxiway snaps flush to its edge (1200, 988)", south == Vector2i(1200, 988))
 	var north := _stands.snap_anchor(def, _world(Vector2i(1298, 1052)), 2)
 	_expect("stand north of the taxiway snaps flush to its edge (1300, 1012)", north == Vector2i(1300, 1012))
-	_expect("footprint: 50 wide along the taxiway, 60 deep behind it",
-		StandsScript.footprint(def, south, 0) == Rect2i(1175, 928, 50, 60)
-		and StandsScript.footprint(def, Vector2i(1500, 700), 3) == Rect2i(1440, 675, 60, 50))
+	_expect("footprint: 50 wide along the taxiway, 70 deep behind it",
+		StandsScript.footprint(def, south, 0) == Rect2i(1175, 918, 50, 70)
+		and StandsScript.footprint(def, Vector2i(1500, 700), 3) == Rect2i(1430, 675, 70, 50))
 
 	var money_before := Money.balance
 	var s1 := PlaceStandCmd.new(&"medium", south, 0)

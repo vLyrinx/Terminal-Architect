@@ -6,9 +6,10 @@ extends RefCounted
 ## turnaround, passengers) read and update it.
 
 enum Direction { ARRIVAL, DEPARTURE }
-enum Status { SCHEDULED, APPROACHING, LANDED, TAXIING, ON_STAND, BOARDING, DEPARTED, CANCELLED }
+enum Status { SCHEDULED, APPROACHING, LANDED, TAXIING, ON_STAND, PUSHBACK, BOARDING, DEPARTED, CANCELLED }
 
-const STATUS_NAMES := ["Scheduled", "Approaching", "Landed", "Taxiing", "On stand", "Boarding", "Departed", "Cancelled"]
+const STATUS_NAMES := ["Scheduled", "Approaching", "Landed", "Taxiing", "On stand", "Pushback", "Boarding", "Departed",
+	"Cancelled"]
 
 ## Unique for this game session.
 var id := 0

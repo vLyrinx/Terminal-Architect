@@ -13,10 +13,16 @@ extends Node3D
 ## Taxiing (checklist step 25): once an arrival has stopped on the runway it
 ## takes the best exit (the runway/ramp join that gives the shortest way to
 ## its stand, preferring ones ahead; one behind means a U-turn) and taxis
-## along the route graph (TaxiRoute) to its stand, where it parks. At its
-## departure time the aircraft backs out of the stand (pushback tugs come in
-## step 26), taxis to its runway's threshold and holds HOLD_SHORT before the
-## runway until the runway is free for it to enter, line up and take off.
+## along the route graph (TaxiRoute) to its stand, where it parks.
+##
+## Turnaround and pushback (checklist step 26): once parked the aircraft stays
+## on the stand for its type's turnaround_minutes. It leaves at its departure
+## time, or as soon as the turnaround is done if it came in late (the
+## departure is then delayed). A tug pushes it back off the stand onto the
+## taxi line (status Pushback); once the tug is off, the stand is freed for
+## the next flight and the aircraft taxis to its runway's threshold, holding
+## HOLD_SHORT before the runway until the runway is free for it to enter,
+## line up and take off.
 ## Taxiing aircraft keep SAFE_DISTANCE behind aircraft in front of them; when
 ## two face each other the one with the lower flight ID goes first.
 ## Without a stand or a route an arrival waits VACATE_HOLD on the runway and
@@ -62,11 +68,19 @@ signal arrived_on_stand(flight: FlightScript, aircraft: Node3D)
 signal cleared_onto_runway(flight: FlightScript, aircraft: Node3D)
 ## No taxi route between the runway and this flight's stand.
 signal taxi_route_missing(flight: FlightScript)
+## An arrival parked and its turnaround began; aircraft.ready_at is when it ends.
+signal turnaround_started(flight: FlightScript, aircraft: Node3D)
+## A departure is being pushed back off its stand.
+signal pushback_started(flight: FlightScript, aircraft: Node3D)
+## The tug is off and the stand is free; the departure taxis on.
+signal pushback_finished(flight: FlightScript, aircraft: Node3D)
 
 ## The Runways node (runways.gd).
 @export var runways: RunwaysScript
 ## The RouteGraph node (route_graph.gd). Without it aircraft don't taxi.
 @export var route_graph: Node
+## Optional StandAllocator (stand_allocator.gd): stands are freed after pushback.
+@export var stand_allocator: Node
 ## Optional MessageToast (message_toast.gd) for the "no runway" warning.
 @export var message_toast: Control
 ## If false, nothing moves unless update() and advance() are called (tests).
@@ -84,6 +98,8 @@ var _delayed := {}
 var _taxi_warned := {}
 ## Departure ID -> game seconds from lining up to lift-off.
 var _lift_off_times := {}
+## Departure IDs already logged as waiting for their turnaround.
+var _delay_noted := {}
 
 
 func _ready() -> void:
@@ -109,7 +125,12 @@ func update() -> void:
 		elif f.scheduled_time <= now:
 			var parked := _parked_for(f)
 			if parked:
-				_try_taxi_out(f, parked)
+				if now >= parked.ready_at:
+					_try_taxi_out(f, parked)
+				elif not _delay_noted.has(f.id):
+					_delay_noted[f.id] = true
+					print("TURNAROUND | %s delayed: turnaround on stand %d ends %s" % [f.flight_number, f.stand_id,
+						_clock(parked.ready_at)])
 			elif f.pair == null or not _moving.has(f.pair.id):
 				_try_takeoff(f, now)
 
@@ -226,6 +247,7 @@ func _spawn(flight: FlightScript, path: FlightPath, runway_id: int, runway_end: 
 	aircraft.path_event.connect(_on_path_event)
 	aircraft.path_finished.connect(_on_path_finished)
 	aircraft.taxi_finished.connect(_on_taxi_finished)
+	aircraft.pushback_finished.connect(_on_pushback_finished)
 	add_child(aircraft)
 	_moving[flight.id] = aircraft
 	return aircraft
@@ -274,7 +296,7 @@ func _on_runway_removed(runway_id: int) -> void:
 		if f.status == FlightScript.Status.APPROACHING:
 			f.status = FlightScript.Status.SCHEDULED
 			_delayed[f.id] = true
-		elif not f.is_arrival() and f.status == FlightScript.Status.TAXIING:
+		elif not f.is_arrival() and f.status in [FlightScript.Status.TAXIING, FlightScript.Status.PUSHBACK]:
 			f.status = FlightScript.Status.SCHEDULED
 		_remove(aircraft)
 	_slots.erase(runway_id)
@@ -311,7 +333,7 @@ func _try_taxi_out(departure: FlightScript, aircraft: Node3D) -> void:
 	if choice.is_empty():
 		_warn_no_runway(departure)
 		return
-	var route := _route_to_runway(departure.stand_id, choice)
+	var route := _route_to_runway(departure.stand_id, choice, _nose_gear_offset(aircraft))
 	if route == null:
 		_warn_taxi(departure, "No taxi route from stand %d to runway %s for %s" % [departure.stand_id,
 			choice.end.designator, departure.flight_number])
@@ -322,13 +344,27 @@ func _try_taxi_out(departure: FlightScript, aircraft: Node3D) -> void:
 	aircraft.runway_id = choice.runway.id
 	aircraft.runway_end = choice.end
 	_lift_off_times[departure.id] = FlightPath.takeoff(choice.end, choice.runway.length).get_event_time("lift_off")
-	departure.status = FlightScript.Status.TAXIING
+	departure.status = FlightScript.Status.PUSHBACK
 	_warned.erase(departure.id)
 	_taxi_warned.erase(departure.id)
-	aircraft.start_taxi(route)
-	print("TAXI | %s leaving stand %d for runway %s (%d m)" % [departure.flight_number, departure.stand_id,
+	_delay_noted.erase(departure.id)
+	aircraft.start_pushback(route)
+	var late := floori((GameClock.game_time - departure.scheduled_time) / 60.0)
+	print("PUSHBACK | %s pushing back from stand %d %s%s, then runway %s (%d m)" % [departure.flight_number,
+		departure.stand_id, GameClock.get_time_string(), " (%d min late)" % late if late > 0 else "",
 		choice.end.designator, roundi(route.length)])
+	pushback_started.emit(departure, aircraft)
 	taxi_started.emit(departure, aircraft)
+
+
+## The tug is off: free the stand and taxi on.
+func _on_pushback_finished(aircraft: Node3D) -> void:
+	var f: FlightScript = aircraft.flight
+	f.status = FlightScript.Status.TAXIING
+	if stand_allocator and f.pair:
+		stand_allocator.free_stand(f.pair)
+	print("PUSHBACK | %s clear of stand %d, taxiing %s" % [f.flight_number, f.stand_id, GameClock.get_time_string()])
+	pushback_finished.emit(f, aircraft)
 
 
 ## A departure waiting at its hold point goes on once the runway is free for
@@ -357,6 +393,13 @@ func _on_taxi_finished(aircraft: Node3D) -> void:
 		arrived_on_stand.emit(f, aircraft)
 		if f.pair == null:
 			_remove(aircraft)
+			return
+		var type_def: Resource = AircraftCatalog.get_type(f.aircraft_type)
+		var minutes: int = type_def.turnaround_minutes if type_def else 0
+		aircraft.ready_at = GameClock.game_time + minutes * 60
+		print("TURNAROUND | %s on stand %d: %d min, ready %s, %s due %s" % [f.flight_number, f.stand_id, minutes,
+			_clock(aircraft.ready_at), f.pair.flight_number, f.pair.get_time_string()])
+		turnaround_started.emit(f, aircraft)
 		return
 	# Lined up: take off.
 	var runway: RefCounted = runways.get_runway(aircraft.runway_id)
@@ -407,13 +450,29 @@ func _route_to_stand(aircraft: Node3D, runway: RefCounted) -> TaxiRoute:
 		points.append(route_graph.nodes[best[i]].position)
 		if i + 1 < best.size():
 			caps.append(_edge_cap(best[i], best[i + 1]))
+	# Stop with the nose wheel, not the main gear, on the stop bar.
+	if points.size() >= 3:
+		points[-1] = _parking_spot(points[-1], points[-2], _nose_gear_offset(aircraft))
 	return TaxiRoute.through(points, caps, dir)
+
+
+## Where the aircraft's origin (main gear) stands when its nose wheel is on
+## the stop bar: gear_offset back from it towards `towards` (the lead-in).
+static func _parking_spot(stop_bar: Vector3, towards: Vector3, gear_offset: float) -> Vector3:
+	return stop_bar + (towards - stop_bar).normalized() * minf(gear_offset, stop_bar.distance_to(towards) - 1.0)
+
+
+## Metres from the aircraft's origin (main gear) forward to its nose gear.
+static func _nose_gear_offset(aircraft: Node3D) -> float:
+	var model: Node3D = aircraft.model
+	return -float(model.nose_gear_z) if model and "nose_gear_z" in model else 12.0
 
 
 ## From a stand to the line-up point on a runway: back out of the stand,
 ## turning onto the taxi line to face the way out, then along the graph to the
-## threshold, holding HOLD_SHORT before the runway.
-func _route_to_runway(stand_id: int, choice: Dictionary) -> TaxiRoute:
+## threshold, holding HOLD_SHORT before the runway. gear_offset is how far the
+## parked aircraft's main gear is back from the stop bar (its nose wheel is on it).
+func _route_to_runway(stand_id: int, choice: Dictionary, gear_offset := 0.0) -> TaxiRoute:
 	if route_graph == null:
 		return null
 	var stand_node: int = route_graph.find_stand(stand_id)
@@ -424,8 +483,8 @@ func _route_to_runway(stand_id: int, choice: Dictionary) -> TaxiRoute:
 	if path.size() < 3:
 		return null
 	var nodes: Dictionary = route_graph.nodes
-	var stop: Vector3 = nodes[path[0]].position
 	var join: Vector3 = nodes[path[1]].position
+	var stop := _parking_spot(nodes[path[0]].position, join, gear_offset)
 	var out := (join - stop).normalized()
 	var onward: Vector3 = (nodes[path[2]].position - join).normalized()
 	var dir: Vector3 = choice.end.direction.normalized()

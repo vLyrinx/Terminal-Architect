@@ -6,8 +6,8 @@ extends Node
 ## The smallest stand size that fits is preferred, so big stands stay free for
 ## big aircraft. If no stand is free a warning is shown once per flight, and
 ## allocation keeps retrying (a stand may be built or freed in time).
-## Reservations end on their own once the departure time has passed (actual
-## pushback releases them early from step 26 on).
+## Reservations end on their own once the departure time has passed, or as
+## soon as the aircraft has been pushed back off the stand (free_stand).
 
 const FlightScript := preload("res://scripts/flights/flight.gd")
 const StandsScript := preload("res://scripts/airside/stands.gd")
@@ -102,6 +102,18 @@ func release(arrival: FlightScript) -> void:
 	arrival.stand_id = -1
 	if arrival.pair:
 		arrival.pair.stand_id = -1
+
+
+## Ends the reservation of this arrival's rotation now (its aircraft has left
+## the stand). The flights keep their stand_id.
+func free_stand(arrival: FlightScript) -> void:
+	for stand_id: int in _reservations:
+		var list: Array = _reservations[stand_id]
+		for r: Dictionary in list.duplicate():
+			if r.arrival == arrival:
+				list.erase(r)
+				_update_note(stand_id)
+	_request()
 
 
 ## Reserved time of an arrival's rotation, Vector2i(from, to) in game seconds.

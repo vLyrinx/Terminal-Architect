@@ -243,7 +243,9 @@ func _check_rotation() -> void:
 			last_facing = Vector3.ZERO
 		if on_stand_at < 0 and arrival.status == FlightScript.Status.ON_STAND:
 			on_stand_at = GameClock.game_time
-			parked_ok = aircraft.parked and p.distance_to(Vector3(stand.stop.x, 0.0, stand.stop.z)) < 1.0 \
+			var nose_gear: Vector3 = aircraft.to_global(Vector3(0.0, 0.0, aircraft.model.nose_gear_z))
+			parked_ok = aircraft.parked and Vector3(nose_gear.x, 0.0, nose_gear.z).distance_to(
+				Vector3(stand.stop.x, 0.0, stand.stop.z)) < 1.0 \
 				and facing.dot(Vector3(0, 0, 1)) > 0.99
 		if left_stand_at < 0 and departure.status == FlightScript.Status.TAXIING:
 			left_stand_at = GameClock.game_time

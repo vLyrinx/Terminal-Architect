@@ -27,7 +27,7 @@ func get_size_class() -> Resource:
 ## (along the lead-in line).
 func get_size() -> Vector2i:
 	var c := get_size_class()
-	return c.stand_size_tiles if c else Vector2i(50, 60)
+	return c.stand_size_tiles if c else Vector2i(50, 70)
 
 
 ## Smallest taxiway size class (TaxiwayDef.SIZE_CLASSES) the stand can open onto.
