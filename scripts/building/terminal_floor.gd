@@ -123,6 +123,29 @@ func count_floor_tiles(rect: Rect2i, floor_index := 0) -> int:
 	return count
 
 
+## Smallest rectangle of tiles holding all the floor on a floor (empty if none).
+## Only rows with floor are scanned, each with native find calls.
+func get_floor_bounds(floor_index := 0) -> Rect2i:
+	if not _tiles.has(floor_index):
+		return Rect2i()
+	var tiles: PackedByteArray = _tiles[floor_index]
+	var first := tiles.find(1)
+	if first < 0:
+		return Rect2i()
+	var width := BuildGrid.PLOT_TILES.x
+	var y0 := floori(first / float(width))
+	var y1 := floori(tiles.rfind(1) / float(width))
+	var x0 := width
+	var x1 := -1
+	for y in range(y0, y1 + 1):
+		var row := tiles.slice(y * width, (y + 1) * width)
+		var a := row.find(1)
+		if a >= 0:
+			x0 = mini(x0, a)
+			x1 = maxi(x1, row.rfind(1))
+	return Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+
+
 ## Total floor tiles on a floor.
 func get_floor_tile_count(floor_index := 0) -> int:
 	if not _tiles.has(floor_index):

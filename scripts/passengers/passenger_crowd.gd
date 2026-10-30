@@ -117,6 +117,14 @@ func set_walking(id: int, walking: bool) -> void:
 	_dirty = true
 
 
+func set_shirt_colour(id: int, colour: Color) -> void:
+	var i: int = _slot_of[id] * STRIDE + 12
+	_buffer[i] = colour.r
+	_buffer[i + 1] = colour.g
+	_buffer[i + 2] = colour.b
+	_dirty = true
+
+
 ## The look of a passenger: shirt colour in rgb and the packed palette indices in a.
 func get_look(id: int) -> Color:
 	var i: int = _slot_of[id] * STRIDE + 12
