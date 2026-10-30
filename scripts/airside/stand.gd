@@ -18,8 +18,8 @@ var rect := Rect2i()
 var entry := Vector3.ZERO
 ## World position of the stop bar on the lead-in line, where a parked aircraft's nose wheel stops.
 var stop := Vector3.ZERO
-## ID of the taxiway the stand opens onto, or 0 if it isn't connected.
-var taxiway_id := 0
+## True if there is enough taxiway paving in front of the entry for this stand.
+var connected := false
 ## Scene node with the stand's mesh and label.
 var node: Node3D
 var label: Label3D
@@ -40,4 +40,4 @@ func get_nose_direction() -> Vector3:
 
 ## True if the stand opens onto a taxiway big enough for it.
 func has_taxiway() -> bool:
-	return taxiway_id != 0
+	return connected

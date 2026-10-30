@@ -1,16 +1,11 @@
-[gd_resource type="Resource" script_class="TaxiwayDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TaxiwayDef" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/airside/taxiway_def.gd" id="1_def"]
-[ext_resource type="Texture2D" path="res://ui/icons/taxiway_small.svg" id="2_icon"]
 
 [resource]
 script = ExtResource("1_def")
 id = &"small"
 display_name = "Small taxiway"
 size_class = "small"
-width = 16
-min_length = 10
-cost_per_metre = 20
+width = 5
 aircraft = "Regional turboprops and regional jets (ATR 72, Dash 8 Q400, Embraer E175, CRJ900)"
-menu_category = "airside"
-icon = ExtResource("2_icon")

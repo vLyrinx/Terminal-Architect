@@ -2,12 +2,12 @@ extends Node3D
 ## Stands (checklist step 18): stores every aircraft stand and draws it.
 ##
 ## A stand is a rectangle of concrete apron sized by its aircraft size class
-## (StandDef.get_size()), with its entry edge flush against a taxiway's paving.
-## The taxiway must run along the entry edge, cover the middle of it and be of
-## the stand's taxiway size class or larger; otherwise the stand can't be
-## built. If that taxiway is later removed the stand stays but shows as not
-## connected. Stands may not overlap runways, taxiways, other stands or
-## terminal floor. Each stand has a yellow lead-in line and stop bar, a red
+## (StandDef.get_size()), with its entry edge flush against taxiway paving.
+## Straight out from the middle of the entry edge there must be at least as
+## much paving as the stand's taxiway size needs (TaxiwayDef.width);
+## otherwise the stand can't be built. If that paving is later removed the
+## stand stays but shows as not connected. Stands may not overlap runways,
+## taxiway paving, ramps, other stands or terminal floor. Each stand has a yellow lead-in line and stop bar, a red
 ## boundary line, and a label with its number, size class and connection.
 ## The RouteGraph adds a lead-in edge from each stand's stop bar out to a taxi
 ## line painted on the taxiway in front. Changes come from PlaceStandCommand
@@ -66,8 +66,7 @@ func _ready() -> void:
 		_material.vertex_color_is_srgb = true
 		_material.roughness = 0.95
 	if taxiways:
-		taxiways.taxiway_added.connect(_on_taxiways_changed.unbind(1))
-		taxiways.taxiway_removed.connect(_on_taxiways_changed.unbind(1))
+		taxiways.paving_changed.connect(_on_taxiways_changed.unbind(1))
 
 
 # --- Queries --------------------------------------------------------------------
@@ -125,32 +124,36 @@ static func footprint(def: Resource, anchor: Vector2i, facing: int) -> Rect2i:
 	return Rect2i(anchor.x - size.y if f.x > 0 else anchor.x, anchor.y - half, size.y, size.x)
 
 
-## IDs of taxiways the entry edge opens onto: they run along the edge and
-## cover the tile just outside its middle, so their paving meets the edge.
-func get_entry_taxiways(anchor: Vector2i, facing: int) -> Array[int]:
-	var ids: Array[int] = []
+## Metres of taxiway paving straight out from the middle of the entry edge,
+## counted up to SNAP_REACH.
+func paving_depth(anchor: Vector2i, facing: int) -> int:
 	if taxiways == null:
-		return ids
+		return 0
 	var f := FACINGS[facing]
 	var outside := anchor + Vector2i(mini(f.x, 0), mini(f.y, 0))
-	for taxiway: RefCounted in taxiways.get_all():
-		if taxiway.rect.has_point(outside) and (taxiway.get_axis().x != 0) == (f.x == 0):
-			ids.append(taxiway.id)
-	return ids
+	var depth := 0
+	while depth < SNAP_REACH and taxiways.is_paved(outside + f * depth):
+		depth += 1
+	return depth
 
 
-## ID of an entry taxiway big enough for this stand size, or 0.
-func find_connection(def: Resource, anchor: Vector2i, facing: int) -> int:
-	for id in get_entry_taxiways(anchor, facing):
-		var taxiway_def := TaxiwayCatalog.get_def(taxiways.get_taxiway(id).def_id)
-		if taxiway_def and taxiway_def.handles(def.get_taxiway_class()):
-			return id
-	return 0
+## Paved width in front of the entry that a stand of this size needs (the
+## width of its taxiway size, TaxiwayDef.width).
+func needed_depth(def: Resource) -> int:
+	for taxiway_def: Resource in TaxiwayCatalog.get_all():
+		if taxiway_def.size_class == def.get_taxiway_class():
+			return taxiway_def.width
+	return 1
+
+
+## True if there is enough paving in front of the entry for this stand size.
+func find_connection(def: Resource, anchor: Vector2i, facing: int) -> bool:
+	return paving_depth(anchor, facing) >= needed_depth(def)
 
 
 ## Where a stand centred near world_pos goes: the middle of its entry edge,
-## on the 10 m grid across the lead-in, and flush against the edge of a
-## taxiway in front of it (within SNAP_REACH) along the lead-in.
+## on the 10 m grid across the lead-in, and flush against the edge of
+## taxiway paving in front of it (within SNAP_REACH) along the lead-in.
 func snap_anchor(def: Resource, world_pos: Vector3, facing: int) -> Vector2i:
 	var f := FACINGS[facing]
 	var depth: int = def.get_size().y
@@ -159,33 +162,20 @@ func snap_anchor(def: Resource, world_pos: Vector3, facing: int) -> Vector2i:
 	var anchor := BuildGrid.snap_to_airside(raw)
 	if taxiways == null:
 		return anchor
-	var along_x := f.x != 0
-	var best := 0
-	var best_distance := SNAP_REACH + 1
-	for taxiway: RefCounted in taxiways.get_all():
-		if (taxiway.get_axis().x != 0) == along_x:
-			continue
-		var r: Rect2i = taxiway.rect
-		var across := anchor.y if along_x else anchor.x
-		var lo := r.position.y if along_x else r.position.x
-		var hi := r.end.y if along_x else r.end.x
-		if across < lo or across >= hi:
-			continue
-		var positive := (f.x if along_x else f.y) > 0
-		var edge: int
-		if along_x:
-			edge = r.position.x if positive else r.end.x
-		else:
-			edge = r.position.y if positive else r.end.y
-		var distance := absi(edge - (raw.x if along_x else raw.y))
-		if distance < best_distance:
-			best_distance = distance
-			best = edge
-	if best_distance <= SNAP_REACH:
-		if along_x:
-			anchor.x = best
-		else:
-			anchor.y = best
+	# Along the lead-in, from the raw position: the nearest corner with paving
+	# just outside the entry and none just inside it.
+	var start := anchor
+	if f.x != 0:
+		start.x = raw.x
+	else:
+		start.y = raw.y
+	var lean := Vector2i(mini(f.x, 0), mini(f.y, 0))
+	for k in SNAP_REACH + 1:
+		for sign_ in [1, -1]:
+			var c: Vector2i = start + f * k * sign_
+			var outside := c + lean
+			if taxiways.is_paved(outside) and not taxiways.is_paved(outside - f):
+				return c
 	return anchor
 
 
@@ -201,7 +191,7 @@ func check_placement(def: Resource, anchor: Vector2i, facing: int) -> String:
 		return "Doesn't fit on the plot"
 	if runways and not runways.get_runways_in(rect).is_empty():
 		return "Overlaps a runway"
-	if taxiways and not taxiways.get_taxiways_in(rect).is_empty():
+	if taxiways and taxiways.count_paved_in(rect) > 0:
 		return "Overlaps a taxiway"
 	if ramps and not ramps.get_ramps_in(rect).is_empty():
 		return "Overlaps a runway ramp"
@@ -209,10 +199,11 @@ func check_placement(def: Resource, anchor: Vector2i, facing: int) -> String:
 		return "Overlaps another stand"
 	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
 		return "Blocked by terminal floor"
-	if get_entry_taxiways(anchor, facing).is_empty():
+	var paved := paving_depth(anchor, facing)
+	if paved == 0:
 		return "Entry must open onto a taxiway"
-	if find_connection(def, anchor, facing) == 0:
-		return "Needs a %s taxiway or larger" % def.get_taxiway_class()
+	if paved < needed_depth(def):
+		return "Needs %d m of taxiway in front (%d m here)" % [needed_depth(def), paved]
 	return ""
 
 
@@ -238,7 +229,7 @@ func add_stand(def_id: StringName, anchor: Vector2i, facing: int, id := 0) -> in
 	var f := stand.get_facing_vector()
 	stand.entry = BuildGrid.tile_corner_to_world(anchor)
 	stand.stop = stand.entry - Vector3(f.x, 0.0, f.y) * (def.get_size().y - STOP_FROM_BACK)
-	stand.taxiway_id = find_connection(def, anchor, facing)
+	stand.connected = find_connection(def, anchor, facing)
 	stand.node = _build_node(stand)
 	add_child(stand.node)
 	_stands[id] = stand
@@ -259,28 +250,27 @@ func remove_stand(id: int) -> StandScript:
 	return stand
 
 
-## Rechecks every stand's connection when a taxiway is built or removed.
+## Rechecks every stand's connection when taxiway paving is laid or removed.
 func _on_taxiways_changed() -> void:
 	for stand: StandScript in _stands.values():
 		var def := StandCatalog.get_def(stand.def_id)
-		var taxiway_id := find_connection(def, stand.anchor, stand.facing) if def else 0
-		if taxiway_id == stand.taxiway_id:
+		var connected := find_connection(def, stand.anchor, stand.facing) if def else false
+		if connected == stand.connected:
 			continue
-		stand.taxiway_id = taxiway_id
+		stand.connected = connected
 		_update_label(stand)
-		print("STAND | stand %d %s" % [stand.id,
-			"connected to taxiway #%d" % taxiway_id if taxiway_id else "not connected"])
+		print("STAND | stand %d %s" % [stand.id, "connected to a taxiway" if connected else "not connected"])
 		stand_changed.emit(stand.id)
 
 
 ## Text for a stand's size class and connection, such as
-## "Medium stand: narrow-body" and "Connected to taxiway #2".
+## "Medium stand: narrow-body" and "Connected to a taxiway".
 func describe(stand: StandScript) -> PackedStringArray:
 	var def := StandCatalog.get_def(stand.def_id)
 	var size_class: Resource = def.get_size_class() if def else null
 	var size_text := "%s: %s" % [def.display_name if def else String(stand.def_id),
 		size_class.display_name.to_lower() if size_class else "?"]
-	var link := "Connected to taxiway #%d" % stand.taxiway_id if stand.has_taxiway() else "Not connected to a taxiway"
+	var link := "Connected to a taxiway" if stand.has_taxiway() else "Not connected to a taxiway"
 	return PackedStringArray([size_text, link])
 
 

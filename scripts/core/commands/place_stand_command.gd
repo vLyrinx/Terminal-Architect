@@ -22,16 +22,16 @@ func get_type() -> String:
 
 
 ## What execute() would do now: {"error": why it can't ("" if it can),
-## "cost": price, "taxiway_id": the taxiway it would open onto (0 if none)}.
+## "cost": price}.
 func preview(world: Node) -> Dictionary:
 	var def := StandCatalog.get_def(def_id)
 	if def == null:
-		return {"error": "Unknown stand size %s" % def_id, "cost": 0, "taxiway_id": 0}
+		return {"error": "Unknown stand size %s" % def_id, "cost": 0}
 	var reason: String = world.stands.check_placement(def, anchor, facing)
 	if reason == "" and world.terminal_walls \
 			and world.terminal_walls.count_pieces_in(world.stands.footprint(def, anchor, facing)) > 0:
 		reason = "Blocked by walls"
-	return {"error": reason, "cost": def.cost, "taxiway_id": world.stands.find_connection(def, anchor, facing)}
+	return {"error": reason, "cost": def.cost}
 
 
 func execute(world: Node) -> bool:

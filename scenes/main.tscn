@@ -1,4 +1,4 @@
-[gd_scene load_steps=51 format=3]
+[gd_scene load_steps=52 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -39,6 +39,7 @@
 [ext_resource type="Script" path="res://scripts/building/tools/ramp_tool.gd" id="47_ramptool"]
 [ext_resource type="Script" path="res://scripts/building/tools/taxi_line_tool.gd" id="48_taxilinetool"]
 [ext_resource type="Texture2D" path="res://ui/icons/taxi_line.svg" id="49_icon_taxiline"]
+[ext_resource type="Texture2D" path="res://ui/icons/taxiway_medium.svg" id="50_icon_taxiway"]
 [ext_resource type="Texture2D" path="res://ui/icons/floor.svg" id="30_icon_floor"]
 [ext_resource type="Texture2D" path="res://ui/icons/walls.svg" id="31_icon_walls"]
 [ext_resource type="Texture2D" path="res://ui/icons/doors.svg" id="32_icon_doors"]
@@ -110,16 +111,18 @@ taxi_lines = NodePath("../TaxiLines")
 script = ExtResource("15_zones")
 terminal_floor = NodePath("../TerminalFloor")
 
-[node name="Runways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "stands")]
+[node name="Runways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "stands", "taxiways")]
 script = ExtResource("29_runways")
 terminal_floor = NodePath("../TerminalFloor")
 stands = NodePath("../Stands")
+taxiways = NodePath("../Taxiways")
 
-[node name="Taxiways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "runways", "stands")]
+[node name="Taxiways" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "runways", "stands", "ramps")]
 script = ExtResource("39_taxiways")
 terminal_floor = NodePath("../TerminalFloor")
 runways = NodePath("../Runways")
 stands = NodePath("../Stands")
+ramps = NodePath("../Ramps")
 
 [node name="Stands" type="Node3D" parent="." node_paths=PackedStringArray("terminal_floor", "runways", "taxiways", "ramps")]
 script = ExtResource("43_stands")
@@ -257,17 +260,17 @@ runways = NodePath("../../Runways")
 command_runner = NodePath("../../Commands")
 graph_overlay = NodePath("../../RouteGraphOverlay")
 
-[node name="TaxiwayTool" type="Node3D" parent="Building" node_paths=PackedStringArray("taxiways", "runways", "ramps", "command_runner", "graph_overlay")]
+[node name="TaxiwayTool" type="Node3D" parent="Building" node_paths=PackedStringArray("taxiways", "command_runner", "graph_overlay")]
 script = ExtResource("42_taxiwaytool")
-tool_name = "Taxiway"
+tool_name = "Taxiway paving"
+menu_category = "airside"
+icon = ExtResource("50_icon_taxiway")
 shortcut = 84
 taxiways = NodePath("../../Taxiways")
-runways = NodePath("../../Runways")
-ramps = NodePath("../../Ramps")
 command_runner = NodePath("../../Commands")
 graph_overlay = NodePath("../../RouteGraphOverlay")
 
-[node name="TaxiLineTool" type="Node3D" parent="Building" node_paths=PackedStringArray("taxi_lines", "command_runner", "graph_overlay")]
+[node name="TaxiLineTool" type="Node3D" parent="Building" node_paths=PackedStringArray("taxi_lines", "command_runner")]
 script = ExtResource("48_taxilinetool")
 tool_name = "Taxi line"
 menu_category = "airside"
@@ -275,7 +278,6 @@ icon = ExtResource("49_icon_taxiline")
 shortcut = 89
 taxi_lines = NodePath("../../TaxiLines")
 command_runner = NodePath("../../Commands")
-graph_overlay = NodePath("../../RouteGraphOverlay")
 
 [node name="StandTool" type="Node3D" parent="Building" node_paths=PackedStringArray("stands", "command_runner", "graph_overlay")]
 script = ExtResource("44_standtool")

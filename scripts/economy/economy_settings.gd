@@ -17,3 +17,5 @@ extends Resource
 @export var door_cost := 800
 ## Price per metre of painted taxi line.
 @export var taxi_line_cost_per_metre := 5
+## Price of one tile (1 x 1 m) of taxiway paving.
+@export var taxiway_tile_cost := 2

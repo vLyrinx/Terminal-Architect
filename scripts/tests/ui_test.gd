@@ -9,7 +9,7 @@ const MAIN := preload("res://scenes/main.tscn")
 const WallsCmd := preload("res://scripts/core/commands/set_walls_command.gd")
 const PlaceCmd := preload("res://scripts/core/commands/place_object_command.gd")
 const PlaceRunwayCmd := preload("res://scripts/core/commands/place_runway_command.gd")
-const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
+const SetPavingCmd := preload("res://scripts/core/commands/set_paving_command.gd")
 const PlaceRampCmd := preload("res://scripts/core/commands/place_ramp_command.gd")
 const PlaceTaxiLineCmd := preload("res://scripts/core/commands/place_taxi_line_command.gd")
 
@@ -50,8 +50,8 @@ func _ready() -> void:
 	_expect("structures has floor, walls, room and doors", counts.structures == 4)
 	_expect("zones has three zones", counts.zones == 3)
 	_expect("terminal has the five core objects", counts.terminal == 5)
-	_expect("airside has 3 runways, 6 ramps, 3 taxiways, the taxi line and the stand, and is enabled",
-		counts.airside == 14 and not menu._category_buttons.airside.disabled)
+	_expect("airside has 3 runways, 6 ramps, paving, the taxi line and the stand, and is enabled",
+		counts.airside == 12 and not menu._category_buttons.airside.disabled)
 	_expect("demolish has demolish and select", counts.demolish == 2)
 	_expect("panel starts closed", not menu._item_panel.visible)
 
@@ -138,8 +138,8 @@ func _ready() -> void:
 	# Ramp, taxiway paving, taxi lines and the route graph overlay (checklist step 17)
 	var runway_id: int = _main.get_node("Runways").get_ids()[0]
 	runner.submit(PlaceRampCmd.new(&"medium_straight", runway_id, Vector2i(1700, 1070), 1))
-	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1070), Vector2i(1700, 1160)))
-	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1160), Vector2i(2000, 1160)))
+	runner.submit(SetPavingCmd.new(Rect2i(1688, 1070, 24, 90), true))
+	runner.submit(SetPavingCmd.new(Rect2i(1700, 1148, 300, 24), true))
 	runner.submit(PlaceTaxiLineCmd.new(Vector2i(1700, 1070), Vector2i(1700, 1160)))
 	runner.submit(PlaceTaxiLineCmd.new(Vector2i(1700, 1160), Vector2i(2000, 1160)))
 	await _frames(2)
@@ -156,7 +156,7 @@ func _ready() -> void:
 	_key(KEY_F4)
 	# Close-ups of a straight ramp (with a bare stub of paving south of the
 	# line) and an angled one, from above.
-	runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1700, 1160), Vector2i(1700, 1220)))
+	runner.submit(SetPavingCmd.new(Rect2i(1688, 1160, 24, 60), true))
 	runner.submit(PlaceRampCmd.new(&"medium_angled", runway_id, Vector2i(2300, 1090), 1))
 	await _frames(2)
 	for shot: Array in [["ramp_straight", Vector2i(1700, 1080)], ["ramp_angled", Vector2i(2260, 1050)]]:

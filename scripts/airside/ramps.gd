@@ -22,7 +22,6 @@ signal ramp_removed(id: int)
 const RampScript := preload("res://scripts/airside/ramp.gd")
 const RunwaysScript := preload("res://scripts/airside/runways.gd")
 const TaxiwaysScript := preload("res://scripts/airside/taxiways.gd")
-const TaxiwayDefScript := preload("res://scripts/airside/taxiway_def.gd")
 const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
 
 const PAVING_HEIGHT := TaxiwaysScript.PAVING_HEIGHT
@@ -102,17 +101,6 @@ func get_rects_in(rect: Rect2i) -> Array[Rect2i]:
 		if ramp.rect.intersects(rect):
 			rects.append(ramp.rect)
 	return rects
-
-
-## Largest size class of ramp paving at a grid-corner position, or "" if none.
-func paving_class_at(corner: Vector2) -> String:
-	var best := -1
-	for ramp: RampScript in _ramps.values():
-		if ramp.rect.grow(1).has_point(Vector2i(corner.floor())) and ramp.covers(corner):
-			var def := RampCatalog.get_def(ramp.def_id)
-			if def:
-				best = maxi(best, TaxiwayDefScript.SIZE_CLASSES.find(def.size_class))
-	return TaxiwayDefScript.SIZE_CLASSES[best] if best >= 0 else ""
 
 
 ## Distance from a runway's centreline to the outer end of a ramp of this size.

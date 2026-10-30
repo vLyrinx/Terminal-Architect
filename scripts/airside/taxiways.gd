@@ -1,46 +1,51 @@
 extends Node3D
-## Taxiways (checklist step 17): stores every piece of taxiway paving and draws it.
+## Taxiways (checklist step 17): taxiway paving, laid tile by tile like floor.
 ##
-## Each piece is straight along world X or Z, placed by grid corners on its
-## centreline with the same footprint rule as runways (runways.gd footprint()),
-## so a taxiway lines up with runways and other taxiways of the same width
-## parity. Pieces may overlap each other and touch a runway's edge, but not
-## cover a runway (runway ramps join runways), terminal floor, walls or stands.
+## Stores which plot tiles are paved and draws them, in chunks of CHUNK_TILES
+## x CHUNK_TILES tiles with filled tiles merged into as few rectangles as
+## possible (the same approach as terminal_floor.gd). Paving is laid and
+## removed in rectangles, 1 m at a time, so it can be fitted closely around
+## buildings. It is never laid on runways, stands, runway ramps or terminal
+## floor; those tiles are skipped.
 ## As in Airport CEO, paving is only the ground: aircraft follow the taxi
-## lines painted on it (taxi_lines.gd), which TaxiLines checks again whenever
-## paving is added or removed (taxiway_added / taxiway_removed). The paving
-## sits a little lower than runway paving, so the runway stays on top where
-## they touch. Changes come from PlaceTaxiwayCommand and DeleteTaxiwayCommand.
+## lines painted on it (taxi_lines.gd), and how wide the paving is around a
+## line decides which aircraft it takes (TaxiwayDef.width). TaxiLines and
+## Stands check again on paving_changed. Changes come from SetPavingCommand.
 ##
-## Keep this node at the world origin.
+## Keep this node at the world origin: meshes are built in world coordinates.
 
-signal taxiway_added(id: int)
-signal taxiway_removed(id: int)
+## Emitted after tiles change. rect is the area that was edited, in tiles.
+signal paving_changed(rect: Rect2i)
 
-const TaxiwayScript := preload("res://scripts/airside/taxiway.gd")
-const RunwaysScript := preload("res://scripts/airside/runways.gd")
 const MeshBuilderScript := preload("res://scripts/building/mesh_builder.gd")
-
-## Lower than runway paving (RunwaysScript.PAVING_HEIGHT), so runways draw on top.
+## Chunk size in tiles. Paving covers large areas, so chunks are bigger than floor chunks.
+const CHUNK_TILES := 64
+## Lower than runway paving (runways.gd PAVING_HEIGHT), so runways draw on top where they touch.
 const PAVING_HEIGHT := 0.025
 ## Taxi lines (taxi_lines.gd) sit this far above the paving.
 const MARKING_LIFT := 0.01
 const PAVING_COLOR := Color(0.33, 0.35, 0.38)
 const PAVING_SIDE_COLOR := Color(0.25, 0.27, 0.3)
 
-## The TerminalFloor node (terminal_floor.gd). Taxiways can't go over floor.
+## The TerminalFloor node (terminal_floor.gd). Paving isn't laid on floor.
 @export var terminal_floor: Node3D
-## The Runways node (runways.gd). Taxiways may cross runways but not run along inside them.
+## The Runways node (runways.gd). Paving isn't laid on runways.
 @export var runways: Node3D
-## Optional Stands node (stands.gd). Taxiways can't go over stands (checklist step 18).
+## Optional Stands node (stands.gd). Paving isn't laid on stands.
 @export var stands: Node3D
+## Optional Ramps node (ramps.gd). Paving isn't laid on runway ramps.
+@export var ramps: Node3D
 
-var _taxiways := {}
-var _next_id := 1
+## One byte per plot tile, 1 = paved.
+var _tiles := PackedByteArray()
+## Vector2i(chunk x, chunk y) -> MeshInstance3D
+var _chunks := {}
+var _mesh := MeshBuilderScript.new()
 static var _material: StandardMaterial3D
 
 
 func _ready() -> void:
+	_tiles.resize(BuildGrid.get_tile_count())
 	if _material == null:
 		_material = StandardMaterial3D.new()
 		_material.vertex_color_use_as_albedo = true
@@ -50,142 +55,187 @@ func _ready() -> void:
 
 # --- Queries --------------------------------------------------------------------
 
-func get_taxiway(id: int) -> TaxiwayScript:
-	return _taxiways.get(id)
+func is_paved(tile: Vector2i) -> bool:
+	var index := BuildGrid.tile_to_index(tile)
+	return index >= 0 and _tiles[index] == 1
 
 
-func get_ids() -> Array:
-	return _taxiways.keys()
+## True if a grid-corner position (in tiles, may be fractional) is on paving.
+func is_paved_at(corner: Vector2) -> bool:
+	return is_paved(Vector2i(floori(corner.x), floori(corner.y)))
 
 
-func get_count() -> int:
-	return _taxiways.size()
+## How many tiles of rect are paved.
+func count_paved_in(rect: Rect2i) -> int:
+	rect = _clip_to_plot(rect)
+	var count := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		count += _tiles.slice(row + rect.position.x, row + rect.end.x).count(1)
+	return count
 
 
-func get_all() -> Array:
-	return _taxiways.values()
+## Total paved tiles.
+func get_paved_count() -> int:
+	return _tiles.count(1)
 
 
-## ID of a taxiway covering a tile, or 0.
-func get_taxiway_at(tile: Vector2i) -> int:
-	for taxiway: TaxiwayScript in _taxiways.values():
-		if taxiway.rect.has_point(tile):
-			return taxiway.id
-	return 0
-
-
-## IDs of taxiways that cover any tile of rect.
-func get_taxiways_in(rect: Rect2i) -> Array[int]:
-	var ids: Array[int] = []
-	for taxiway: TaxiwayScript in _taxiways.values():
-		if taxiway.rect.intersects(rect):
-			ids.append(taxiway.id)
-	return ids
-
-
-## Paved rectangles overlapping rect (they may overlap each other).
-func get_rects_in(rect: Rect2i) -> Array[Rect2i]:
-	var rects: Array[Rect2i] = []
-	for taxiway: TaxiwayScript in _taxiways.values():
-		if taxiway.rect.intersects(rect):
-			rects.append(taxiway.rect)
-	return rects
-
-
-## Tiles a taxiway of this size would cover between two centreline corners.
-static func footprint(def: Resource, start: Vector2i, end: Vector2i) -> Rect2i:
-	return RunwaysScript.footprint(def, start, end)
-
-
-## Why a taxiway can't be built between start and end, or "" if it can.
-## (Walls in the way are checked by PlaceTaxiwayCommand, which knows the walls.)
-func check_placement(def: Resource, start: Vector2i, end: Vector2i) -> String:
-	if def == null:
-		return "Unknown taxiway size"
-	if start.x != end.x and start.y != end.y:
-		return "Taxiways run straight along the grid"
-	if not BuildGrid.is_on_airside_grid(start) or not BuildGrid.is_on_airside_grid(end):
-		return "Taxiways start and end on the %d m grid" % BuildGrid.AIRSIDE_SNAP
-	var length := maxi(absi(end.x - start.x), absi(end.y - start.y))
-	if length < def.min_length:
-		return "Too short: at least %d m" % def.min_length
-	var rect := footprint(def, start, end)
-	if not Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES).encloses(rect):
-		return "Doesn't fit on the plot"
-	if runways and not runways.get_runways_in(rect).is_empty():
-		return "Taxiways can't go on a runway: use a runway ramp"
-	if terminal_floor and terminal_floor.count_floor_tiles(rect) > 0:
-		return "Blocked by terminal floor"
-	if stands and not stands.get_stands_in(rect).is_empty():
-		return "Blocked by a stand"
-	return ""
+## Number of tiles in rect that would change if it were paved (or cleared).
+func count_changes(rect: Rect2i, paved: bool) -> int:
+	rect = _clip_to_plot(rect)
+	if not paved:
+		return count_paved_in(rect)
+	var blocked := _blockers(rect)
+	var count := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		for x in range(rect.position.x, rect.end.x):
+			if _tiles[row + x] == 0 and not _is_blocked(Vector2i(x, y), blocked):
+				count += 1
+	return count
 
 
 # --- Editing --------------------------------------------------------------------
 
-## Adds a taxiway (no checks: use check_placement() first). id 0 picks a new ID.
-## Returns the taxiway's ID.
-func add_taxiway(def_id: StringName, start: Vector2i, end: Vector2i, id := 0) -> int:
-	var def := TaxiwayCatalog.get_def(def_id)
-	if def == null:
-		push_warning("Taxiways: unknown taxiway size %s" % def_id)
+## Paves (paved = true) or clears every tile in rect, skipping tiles that
+## can't be paved. Returns how many tiles changed.
+func set_rect(rect: Rect2i, paved: bool) -> int:
+	rect = _clip_to_plot(rect)
+	if rect.size.x <= 0 or rect.size.y <= 0:
 		return 0
-	if id <= 0:
-		id = _next_id
-	_next_id = maxi(_next_id, id + 1)
-
-	var taxiway := TaxiwayScript.new()
-	taxiway.id = id
-	taxiway.def_id = def_id
-	taxiway.start = start
-	taxiway.end = end
-	taxiway.rect = footprint(def, start, end)
-	taxiway.width = def.width
-	taxiway.length = maxi(absi(end.x - start.x), absi(end.y - start.y))
-	taxiway.a = centreline_point(taxiway.rect, taxiway.get_axis().x != 0, start)
-	taxiway.b = centreline_point(taxiway.rect, taxiway.get_axis().x != 0, end)
-	taxiway.node = _build_node(taxiway)
-	add_child(taxiway.node)
-	_taxiways[id] = taxiway
-	taxiway_added.emit(id)
-	return id
+	var value := 1 if paved else 0
+	var blocked := _blockers(rect) if paved else {}
+	var changed := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		for x in range(rect.position.x, rect.end.x):
+			if _tiles[row + x] == value or (paved and _is_blocked(Vector2i(x, y), blocked)):
+				continue
+			_tiles[row + x] = value
+			changed += 1
+	if changed > 0:
+		_tiles_changed(rect)
+	return changed
 
 
-func remove_taxiway(id: int) -> TaxiwayScript:
-	var taxiway: TaxiwayScript = _taxiways.get(id)
-	if taxiway == null:
-		return null
-	_taxiways.erase(id)
-	taxiway.node.queue_free()
-	taxiway.node = null
-	taxiway_removed.emit(id)
-	return taxiway
+## The tiles in rect (clipped to the plot), one byte each, row by row: saved
+## by commands so undo can put them back with set_rect_state().
+func get_rect_state(rect: Rect2i) -> PackedByteArray:
+	rect = _clip_to_plot(rect)
+	var state := PackedByteArray()
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		state.append_array(_tiles.slice(row + rect.position.x, row + rect.end.x))
+	return state
 
 
-## World position on the centreline of a paved rect at the grid line of a corner.
-static func centreline_point(rect: Rect2i, along_x: bool, corner: Vector2i) -> Vector3:
-	var lo := BuildGrid.tile_corner_to_world(rect.position)
-	var hi := BuildGrid.tile_corner_to_world(rect.end)
-	var p := BuildGrid.tile_corner_to_world(corner)
-	if along_x:
-		return Vector3(p.x, 0.0, (lo.z + hi.z) * 0.5)
-	return Vector3((lo.x + hi.x) * 0.5, 0.0, p.z)
+## Puts back tiles saved by get_rect_state() for the same rect.
+func set_rect_state(rect: Rect2i, state: PackedByteArray) -> void:
+	rect = _clip_to_plot(rect)
+	if state.size() != rect.get_area() or state.is_empty():
+		return
+	var i := 0
+	for y in range(rect.position.y, rect.end.y):
+		var row := y * BuildGrid.PLOT_TILES.x
+		for x in range(rect.position.x, rect.end.x):
+			_tiles[row + x] = state[i]
+			i += 1
+	_tiles_changed(rect)
+
+
+## What stops paving inside rect: {"rects": runway and stand rectangles,
+## "ramps": runway ramps whose paving box overlaps rect}.
+func _blockers(rect: Rect2i) -> Dictionary:
+	var rects: Array[Rect2i] = []
+	if runways:
+		rects.append_array(runways.get_rects_in(rect))
+	if stands:
+		rects.append_array(stands.get_rects_in(rect))
+	var ramp_list := []
+	if ramps:
+		for id: int in ramps.get_ramps_in(rect):
+			ramp_list.append(ramps.get_ramp(id))
+	return {"rects": rects, "ramps": ramp_list}
+
+
+func _is_blocked(tile: Vector2i, blocked: Dictionary) -> bool:
+	for r: Rect2i in blocked.get("rects", []):
+		if r.has_point(tile):
+			return true
+	for ramp: RefCounted in blocked.get("ramps", []):
+		if ramp.rect.has_point(tile) and ramp.covers(Vector2(tile) + Vector2(0.5, 0.5), 0.0):
+			return true
+	return terminal_floor != null and terminal_floor.has_floor(tile)
+
+
+func _clip_to_plot(rect: Rect2i) -> Rect2i:
+	return rect.intersection(Rect2i(Vector2i.ZERO, BuildGrid.PLOT_TILES))
 
 
 # --- Mesh -----------------------------------------------------------------------
 
-func _build_node(taxiway: TaxiwayScript) -> Node3D:
-	var root := Node3D.new()
-	root.name = "Taxiway_%d" % taxiway.id
-	var builder := MeshBuilderScript.new()
-	var lo := BuildGrid.tile_corner_to_world(taxiway.rect.position)
-	var hi := BuildGrid.tile_corner_to_world(taxiway.rect.end)
-	builder.add_box(Vector3(lo.x, 0.0, lo.z), Vector3(hi.x, PAVING_HEIGHT, hi.z), PAVING_SIDE_COLOR, PAVING_COLOR)
+## Rebuilds every chunk rect touches and tells listeners.
+func _tiles_changed(rect: Rect2i) -> void:
+	@warning_ignore("integer_division")
+	var first := Vector2i(rect.position.x / CHUNK_TILES, rect.position.y / CHUNK_TILES)
+	@warning_ignore("integer_division")
+	var last := Vector2i((rect.end.x - 1) / CHUNK_TILES, (rect.end.y - 1) / CHUNK_TILES)
+	for cy in range(first.y, last.y + 1):
+		for cx in range(first.x, last.x + 1):
+			_rebuild_chunk(Vector2i(cx, cy))
+	paving_changed.emit(rect)
 
-	var mi := MeshInstance3D.new()
-	mi.name = "Mesh"
-	mi.mesh = builder.commit()
-	mi.material_override = _material
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-	return root
+
+func _rebuild_chunk(key: Vector2i) -> void:
+	var x0 := key.x * CHUNK_TILES
+	var y0 := key.y * CHUNK_TILES
+	var w := mini(CHUNK_TILES, BuildGrid.PLOT_TILES.x - x0)
+	var h := mini(CHUNK_TILES, BuildGrid.PLOT_TILES.y - y0)
+	_mesh.clear()
+	# Greedy merge: 1 = paved, not yet covered by a rectangle; 2 = covered.
+	var mask := PackedByteArray()
+	mask.resize(w * h)
+	for ly in h:
+		var row := (y0 + ly) * BuildGrid.PLOT_TILES.x + x0
+		for lx in w:
+			mask[lx + ly * w] = _tiles[row + lx]
+	for ly in h:
+		var lx := 0
+		while lx < w:
+			if mask[lx + ly * w] != 1:
+				lx += 1
+				continue
+			var rw := 1
+			while lx + rw < w and mask[lx + rw + ly * w] == 1:
+				rw += 1
+			var rh := 1
+			var can_grow := true
+			while can_grow and ly + rh < h:
+				for i in rw:
+					if mask[lx + i + (ly + rh) * w] != 1:
+						can_grow = false
+						break
+				if can_grow:
+					rh += 1
+			for j in rh:
+				for i in rw:
+					mask[lx + i + (ly + j) * w] = 2
+			var lo := BuildGrid.tile_corner_to_world(Vector2i(x0 + lx, y0 + ly))
+			var hi := BuildGrid.tile_corner_to_world(Vector2i(x0 + lx + rw, y0 + ly + rh))
+			_mesh.add_box(lo, Vector3(hi.x, PAVING_HEIGHT, hi.z), PAVING_SIDE_COLOR, PAVING_COLOR)
+			lx += rw
+
+	var mi: MeshInstance3D = _chunks.get(key)
+	if _mesh.is_empty():
+		if mi:
+			mi.queue_free()
+			_chunks.erase(key)
+		return
+	if mi == null:
+		mi = MeshInstance3D.new()
+		mi.name = "Paving_%d_%d" % [key.x, key.y]
+		mi.material_override = _material
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		_chunks[key] = mi
+	mi.mesh = _mesh.commit()

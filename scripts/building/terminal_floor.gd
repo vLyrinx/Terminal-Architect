@@ -141,13 +141,16 @@ func set_rect(rect: Rect2i, filled: bool, floor_index := 0) -> int:
 		return 0
 	var tiles := _get_tiles(floor_index)
 	var value := 1 if filled else 0
-	# Only the few runways and taxiways overlapping rect are checked per tile.
+	# Only the few runways, stands and ramps overlapping rect are checked per tile.
 	var paved: Array[Rect2i] = _paved_rects(rect) if filled else ([] as Array[Rect2i])
+	var check_taxiways: bool = filled and taxiways != null and taxiways.count_paved_in(rect) > 0
 	var changed := 0
 	for y in range(rect.position.y, rect.end.y):
 		var row := y * BuildGrid.PLOT_TILES.x
 		for x in range(rect.position.x, rect.end.x):
 			if not paved.is_empty() and paved.any(func(r: Rect2i) -> bool: return r.has_point(Vector2i(x, y))):
+				continue
+			if check_taxiways and _is_taxiway(Vector2i(x, y)):
 				continue
 			if tiles[row + x] != value and (filled or not _has_object(Vector2i(x, y), floor_index)):
 				tiles[row + x] = value
@@ -209,13 +212,12 @@ func _get_tiles(floor_index: int) -> PackedByteArray:
 	return _tiles[floor_index]
 
 
-## Runway and taxiway rectangles overlapping rect (they may overlap each other).
+## Runway, stand and ramp rectangles overlapping rect (they may overlap each
+## other). Taxiway paving is tiles, checked with _is_taxiway().
 func _paved_rects(rect: Rect2i) -> Array[Rect2i]:
 	var rects: Array[Rect2i] = []
 	if runways:
 		rects.append_array(runways.get_rects_in(rect))
-	if taxiways:
-		rects.append_array(taxiways.get_rects_in(rect))
 	if stands:
 		rects.append_array(stands.get_rects_in(rect))
 	if ramps:
@@ -223,12 +225,17 @@ func _paved_rects(rect: Rect2i) -> Array[Rect2i]:
 	return rects
 
 
+func _is_taxiway(tile: Vector2i) -> bool:
+	return taxiways != null and taxiways.is_paved(tile)
+
+
 ## How many tiles of rect are paved, each counted once where pavings overlap.
 func _count_paved(rect: Rect2i) -> int:
 	var rects := _paved_rects(rect)
+	var taxiway_tiles: int = taxiways.count_paved_in(rect) if taxiways else 0
 	if rects.is_empty():
-		return 0
-	if rects.size() == 1:
+		return taxiway_tiles
+	if rects.size() == 1 and taxiway_tiles == 0:
 		return rects[0].intersection(rect).get_area()
 	var mask := PackedByteArray()
 	mask.resize(rect.get_area())
@@ -238,6 +245,12 @@ func _count_paved(rect: Rect2i) -> int:
 			var row := (y - rect.position.y) * rect.size.x - rect.position.x
 			for x in range(part.position.x, part.end.x):
 				mask[row + x] = 1
+	if taxiway_tiles > 0:
+		for y in range(rect.position.y, rect.end.y):
+			var row := (y - rect.position.y) * rect.size.x - rect.position.x
+			for x in range(rect.position.x, rect.end.x):
+				if _is_taxiway(Vector2i(x, y)):
+					mask[row + x] = 1
 	return mask.count(1)
 
 

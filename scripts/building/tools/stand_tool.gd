@@ -7,7 +7,7 @@ extends "res://scripts/building/build_tool.gd"
 ## which runs from the entry edge to the stop bar. Near a taxiway the entry
 ## edge snaps flush against the taxiway's paving; across the lead-in the stand
 ## stays on the 10 m grid. The label shows the size class, the aircraft that
-## fit, the price and the taxiway it connects to, or why it can't be built.
+## fit and the price, or why it can't be built.
 ## The route graph overlay is shown while this tool is in use. One build menu
 ## entry per size in data/stands/.
 
@@ -172,8 +172,7 @@ func _update_ghost(def: Resource) -> void:
 	var heading := "%s: %s   %d x %d m" % [def.display_name, def.get_size_class().display_name.to_lower(),
 		rect.size.x, rect.size.y]
 	if reason == "":
-		_label.text = "%s   %s\nFits %s\nConnects to taxiway #%d" % [heading, Money.format(p.cost), _fits_text(def),
-			p.taxiway_id]
+		_label.text = "%s   %s\nFits %s\nOpens onto the taxiway" % [heading, Money.format(p.cost), _fits_text(def)]
 		_label.modulate = Color.WHITE
 	else:
 		_label.text = "%s\n%s" % [heading, reason]

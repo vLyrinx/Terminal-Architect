@@ -15,7 +15,7 @@ const RunwaysScript := preload("res://scripts/airside/runways.gd")
 const TaxiwaysScript := preload("res://scripts/airside/taxiways.gd")
 const StandsScript := preload("res://scripts/airside/stands.gd")
 const CommandRunnerScript := preload("res://scripts/core/command_runner.gd")
-const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
+const SetPavingCmd := preload("res://scripts/core/commands/set_paving_command.gd")
 const PlaceStandCmd := preload("res://scripts/core/commands/place_stand_command.gd")
 const DeleteStandCmd := preload("res://scripts/core/commands/delete_stand_command.gd")
 const StandAllocatorScript := preload("res://scripts/flights/stand_allocator.gd")
@@ -40,8 +40,8 @@ func _ready() -> void:
 	add_child(_allocator)
 	_allocator.allocation_failed.connect(func(f: FlightScript) -> void: _failed.append(f))
 
-	# Medium taxiway along y = 1000 with two medium stands side by side south of it.
-	_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1000, 1000), Vector2i(1400, 1000)))
+	# 24 m of taxiway paving along y = 1000 with two medium stands side by side south of it.
+	_runner.submit(SetPavingCmd.new(Rect2i(1000, 988, 400, 24), true))
 	await get_tree().process_frame
 	var def := StandCatalog.get_def(&"medium")
 	var c1 := PlaceStandCmd.new(&"medium", _stands.snap_anchor(def, _world(Vector2i(1200, 950)), 0), 0)

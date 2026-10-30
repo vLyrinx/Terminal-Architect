@@ -18,10 +18,11 @@ const RouteGraphScript := preload("res://scripts/airside/route_graph.gd")
 const TaxiLinesScript := preload("res://scripts/airside/taxi_lines.gd")
 const CommandRunnerScript := preload("res://scripts/core/command_runner.gd")
 const PlaceTaxiLineCmd := preload("res://scripts/core/commands/place_taxi_line_command.gd")
-const PlaceTaxiwayCmd := preload("res://scripts/core/commands/place_taxiway_command.gd")
-const DeleteTaxiwayCmd := preload("res://scripts/core/commands/delete_taxiway_command.gd")
+const SetPavingCmd := preload("res://scripts/core/commands/set_paving_command.gd")
 const PlaceStandCmd := preload("res://scripts/core/commands/place_stand_command.gd")
 const DeleteStandCmd := preload("res://scripts/core/commands/delete_stand_command.gd")
+## 24 m of taxiway paving along y = 1000, the width a medium stand needs.
+const MEDIUM_PAVING := Rect2i(1000, 988, 400, 24)
 
 var _failures := 0
 var _floor: TerminalFloorScript
@@ -89,14 +90,13 @@ func _ready() -> void:
 	_expect("A320 and 737-800 fit the medium stand", def.takes(&"a320") and def.takes(&"b738")
 		and def.get_fitting_types().size() == 2)
 
-	# Medium taxiway along y = 1000 (paving y 988 to 1012), small one along y = 1500.
-	_runner.submit(PlaceTaxiwayCmd.new(&"medium", Vector2i(1000, 1000), Vector2i(1400, 1000)))
-	_runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(1000, 1500), Vector2i(1400, 1500)))
+	# Paving 24 m wide along y = 1000 (y 988 to 1012), and 16 m wide along y = 1500.
+	_runner.submit(SetPavingCmd.new(MEDIUM_PAVING, true))
+	_runner.submit(SetPavingCmd.new(Rect2i(1000, 1492, 400, 16), true))
 	# Aircraft follow taxi lines, so paint one down the middle of each.
 	_runner.submit(PlaceTaxiLineCmd.new(Vector2i(1000, 1000), Vector2i(1400, 1000)))
 	_runner.submit(PlaceTaxiLineCmd.new(Vector2i(1000, 1500), Vector2i(1400, 1500)))
 	await _rebuilt()
-	var medium_id: int = _taxiways.get_taxiway_at(Vector2i(1100, 1000))
 
 	# Snapping: entry edge flush with the taxiway's near edge, centreline on the 10 m grid.
 	var south := _stands.snap_anchor(def, _world(Vector2i(1203, 950)), 0)
@@ -112,9 +112,9 @@ func _ready() -> void:
 	_expect("stand facing the medium taxiway is placed", _runner.submit(s1))
 	_expect("it costs %s" % Money.format(def.cost), Money.balance == money_before - def.cost)
 	var stand: RefCounted = _stands.get_stand(s1.stand_id)
-	_expect("it is connected to the medium taxiway", stand.has_taxiway() and stand.taxiway_id == medium_id)
+	_expect("it is connected to the taxiway", stand.has_taxiway())
 	_expect("label shows number, size class and connection", stand.label.text.contains("Stand %d" % stand.id)
-		and stand.label.text.contains("narrow-body") and stand.label.text.contains("Connected to taxiway"))
+		and stand.label.text.contains("narrow-body") and stand.label.text.contains("Connected to a taxiway"))
 	await _rebuilt()
 	# Taxi line: 1000, 1200 (joins the lead-in), 1400. Stand: stop bar and entry edge.
 	_expect("graph: 5 nodes, 4 edges with one stand (plus the small taxiway's 2 and 1)", _counts(7, 5))
@@ -136,20 +136,18 @@ func _ready() -> void:
 		and _last_failed.error == "Entry must open onto a taxiway")
 	_expect("stand facing a small taxiway is refused",
 		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(1200, 1492), 0))
-		and _last_failed.error == "Needs a medium taxiway or larger")
+		and _last_failed.error == "Needs 24 m of taxiway in front (16 m here)")
 	_expect("stand overlapping another stand is refused",
 		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(1220, 988), 0))
 		and _last_failed.error == "Overlaps another stand")
 	_expect("stand overlapping a taxiway is refused",
 		not _runner.submit(PlaceStandCmd.new(&"medium", Vector2i(1100, 1010), 0))
 		and _last_failed.error == "Overlaps a taxiway")
-	_expect("taxiway over a stand is refused",
-		not _runner.submit(PlaceTaxiwayCmd.new(&"small", Vector2i(1200, 900), Vector2i(1200, 960)))
-		and _last_failed.error == "Blocked by a stand")
+	_expect("paving skips stand tiles", _taxiways.count_changes(stand.rect, true) == 0)
 	_expect("no floor is laid on a stand", _floor.set_rect(stand.rect, true) == 0)
 
 	# Taxiway removed: stand stays, not connected; put back: connected again.
-	_runner.submit(DeleteTaxiwayCmd.new(medium_id))
+	_runner.submit(SetPavingCmd.new(MEDIUM_PAVING, false))
 	await _rebuilt()
 	_expect("removing the taxiway leaves the stand not connected", _stands.get_count() == 2
 		and not stand.has_taxiway() and stand.label.text.contains("Not connected"))

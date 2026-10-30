@@ -41,6 +41,8 @@ const EDGE_INSET := 1.0
 @export var terminal_floor: Node3D
 ## Optional Stands node (stands.gd). Runways can't go over stands (checklist step 18).
 @export var stands: Node3D
+## Optional Taxiways node (taxiways.gd). Runways can't go over taxiway paving.
+@export var taxiways: Node3D
 
 var _runways := {}
 var _next_id := 1
@@ -157,6 +159,8 @@ func check_placement(def: Resource, start: Vector2i, end: Vector2i, ignore_id :=
 		return "Blocked by terminal floor"
 	if stands and not stands.get_stands_in(rect).is_empty():
 		return "Blocked by a stand"
+	if taxiways and taxiways.count_paved_in(rect) > 0:
+		return "Blocked by taxiway paving"
 	return ""
 
 

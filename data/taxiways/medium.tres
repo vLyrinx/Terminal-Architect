@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="TaxiwayDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TaxiwayDef" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/airside/taxiway_def.gd" id="1_def"]
-[ext_resource type="Texture2D" path="res://ui/icons/taxiway_medium.svg" id="2_icon"]
 
 [resource]
 script = ExtResource("1_def")
@@ -9,8 +8,4 @@ id = &"medium"
 display_name = "Medium taxiway"
 size_class = "medium"
 width = 24
-min_length = 10
-cost_per_metre = 30
 aircraft = "Narrow-body jets (A320, 737-800, A321neo, 737 MAX 8) and everything smaller"
-menu_category = "airside"
-icon = ExtResource("2_icon")

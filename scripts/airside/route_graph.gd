@@ -30,7 +30,7 @@ signal graph_changed
 ## close to meeting are joined.
 const MERGE_DISTANCE := 1.0
 ## A stand's lead-in may reach this far past its entry edge to meet a taxi line.
-const STAND_REACH := 20.0
+const STAND_REACH := 40.0
 ## Which segment kinds join each other.
 const JOINS := {
 	"runway": ["ramp"],
