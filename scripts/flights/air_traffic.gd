@@ -83,6 +83,8 @@ signal pushback_finished(flight: FlightScript, aircraft: Node3D)
 @export var stand_allocator: Node
 ## Optional MessageToast (message_toast.gd) for the "no runway" warning.
 @export var message_toast: Control
+## Optional Gates node (gates.gd, step 32): departures wait until boarding has finished.
+@export var gates: Node
 ## If false, nothing moves unless update() and advance() are called (tests).
 @export var automatic := true
 
@@ -100,6 +102,8 @@ var _taxi_warned := {}
 var _lift_off_times := {}
 ## Departure IDs already logged as waiting for their turnaround.
 var _delay_noted := {}
+## Departure IDs already logged as waiting for boarding to finish.
+var _boarding_noted := {}
 
 
 func _ready() -> void:
@@ -118,11 +122,17 @@ func update() -> void:
 	for f in FlightSchedule.get_all_flights():
 		if f.scheduled_time > now + LOOKAHEAD:
 			break
-		if f.status != FlightScript.Status.SCHEDULED or _moving.has(f.id):
+		if (f.status != FlightScript.Status.SCHEDULED and f.status != FlightScript.Status.BOARDING) \
+				or _moving.has(f.id):
 			continue
 		if f.is_arrival():
 			_try_approach(f, now)
 		elif f.scheduled_time <= now:
+			if gates and not gates.is_boarding_finished(f):
+				if not _boarding_noted.has(f.id):
+					_boarding_noted[f.id] = true
+					print("BOARDING | %s waiting for boarding to finish" % f.flight_number)
+				continue
 			var parked := _parked_for(f)
 			if parked:
 				if now >= parked.ready_at:

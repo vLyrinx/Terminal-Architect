@@ -1,4 +1,4 @@
-[gd_scene load_steps=57 format=3]
+[gd_scene load_steps=58 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -53,6 +53,7 @@
 [ext_resource type="Script" path="res://scripts/passengers/passenger_spawner.gd" id="65_spawner"]
 [ext_resource type="Script" path="res://scripts/passengers/check_in.gd" id="66_checkin"]
 [ext_resource type="Script" path="res://scripts/passengers/security.gd" id="67_security"]
+[ext_resource type="Script" path="res://scripts/passengers/gates.gd" id="68_gates"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -153,12 +154,13 @@ script = ExtResource("61_allocator")
 stands = NodePath("../Stands")
 message_toast = NodePath("../UI/Root/MessageToast")
 
-[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "route_graph", "stand_allocator", "message_toast")]
+[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "route_graph", "stand_allocator", "message_toast", "gates")]
 script = ExtResource("62_airtraffic")
 runways = NodePath("../Runways")
 route_graph = NodePath("../RouteGraph")
 stand_allocator = NodePath("../StandAllocator")
 message_toast = NodePath("../UI/Root/MessageToast")
+gates = NodePath("../Gates")
 
 [node name="RouteGraph" type="Node" parent="." node_paths=PackedStringArray("runways", "ramps", "taxi_lines", "stands")]
 script = ExtResource("40_graph")
@@ -203,6 +205,17 @@ terminal_zones = NodePath("../TerminalZones")
 terminal_paths = NodePath("../TerminalPaths")
 spawner = NodePath("../PassengerSpawner")
 check_in = NodePath("../CheckIn")
+
+[node name="Gates" type="Node" parent="." node_paths=PackedStringArray("placed_objects", "terminal_floor", "terminal_walls", "terminal_zones", "terminal_paths", "spawner", "security", "stands")]
+script = ExtResource("68_gates")
+placed_objects = NodePath("../PlacedObjects")
+terminal_floor = NodePath("../TerminalFloor")
+terminal_walls = NodePath("../TerminalWalls")
+terminal_zones = NodePath("../TerminalZones")
+terminal_paths = NodePath("../TerminalPaths")
+spawner = NodePath("../PassengerSpawner")
+security = NodePath("../Security")
+stands = NodePath("../Stands")
 
 [node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
 script = ExtResource("41_graphoverlay")
