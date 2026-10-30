@@ -148,9 +148,10 @@ script = ExtResource("61_allocator")
 stands = NodePath("../Stands")
 message_toast = NodePath("../UI/Root/MessageToast")
 
-[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "message_toast")]
+[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "route_graph", "message_toast")]
 script = ExtResource("62_airtraffic")
 runways = NodePath("../Runways")
+route_graph = NodePath("../RouteGraph")
 message_toast = NodePath("../UI/Root/MessageToast")
 
 [node name="RouteGraph" type="Node" parent="." node_paths=PackedStringArray("runways", "ramps", "taxi_lines", "stands")]
