@@ -9,6 +9,7 @@ id = &"large"
 display_name = "Large runway"
 size_class = "large"
 width = 60
+length = 3600
 min_length = 3000
 max_length = 4000
 cost_per_metre = 150

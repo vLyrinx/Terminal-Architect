@@ -1,22 +1,22 @@
 extends "res://scripts/building/build_tool.gd"
-## Runway tool (checklist step 16): click a start point and drag to set the
-## runway's direction and length.
+## Runway tool (checklist step 16): place a runway as a fixed-size item.
 ##
-##   Left drag    lay out the runway from the start corner along X or Z
-## The runway starts on the 10 m airside grid (BuildGrid.AIRSIDE_SNAP, the
-## major grid lines), follows whichever axis the mouse has moved
-## further along in steps of the same 10 m, and stops at the size's
-## longest length. The ghost is green when it can be built and red when not;
-## the label shows the designators, length, width and price, or why it can't
-## be built (too short, over floor or walls, overlapping, not enough money).
-## One build menu entry per runway size in data/runways/.
+##   Left click    place the runway (as a PlaceRunwayCommand)
+##   R             turn it 90 degrees (Shift + R: the other way)
+## Each size in data/runways/ has one length (RunwayDef.length). The runway is
+## centred on the mouse, snapped to the 10 m airside grid
+## (BuildGrid.AIRSIDE_SNAP, the major grid lines), and runs along X or Z. The
+## heading decides which end is which, so turning it also swaps the
+## designators. The ghost is green when it can be built and red when not; the
+## label shows the designators, length, width and price, or why it can't be
+## built (off the plot, over floor or walls, overlapping, not enough money).
+## One build menu entry per runway size.
 
 const PlaceRunwayCommandScript := preload("res://scripts/core/commands/place_runway_command.gd")
 const RunwayScript := preload("res://scripts/airside/runway.gd")
-const BuildGridScript := preload("res://scripts/building/build_grid.gd")
-## Runway lengths snap to this many metres, so the far end is on the airside grid too.
-const LENGTH_STEP := BuildGridScript.AIRSIDE_SNAP
 const GHOST_HEIGHT := 0.5
+## Directions from end A to end B, in the order R steps through them: east, south, west, north.
+const DIRECTIONS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 
 ## The Runways node (runways.gd).
 @export var runways: Node3D
@@ -24,13 +24,11 @@ const GHOST_HEIGHT := 0.5
 @export var command_runner: Node
 
 var _def_id: StringName
+var _facing := 0
+var _centre := Vector2i.ZERO
+var _has_hover := false
 var _ghost: MeshInstance3D
 var _label: Label3D
-var _dragging := false
-var _start := Vector2i.ZERO
-var _end := Vector2i.ZERO
-var _hover_corner := Vector2i.ZERO
-var _has_hover := false
 
 
 func _ready() -> void:
@@ -56,7 +54,6 @@ func activate() -> void:
 
 
 func deactivate() -> void:
-	_dragging = false
 	_ghost.visible = false
 	_label.visible = false
 
@@ -64,31 +61,27 @@ func deactivate() -> void:
 func _process(_delta: float) -> void:
 	if not is_active():
 		return
+	var def := RunwayCatalog.get_def(_def_id)
 	var pick := mouse_pick()
-	_has_hover = pick.hit and pick.in_plot
-	if pick.hit and (_has_hover or _dragging):
-		_hover_corner = BuildGrid.snap_to_airside(BuildGrid.world_to_corner(pick.position))
-		if _dragging:
-			_end = _snap_end(_hover_corner)
-	_update_ghost()
+	_has_hover = def != null and pick.hit and pick.in_plot
+	if _has_hover:
+		_centre = BuildGrid.snap_to_airside(BuildGrid.world_to_corner(pick.position))
+	_update_ghost(def)
 
 
-func press(_tile: Vector2i) -> void:
-	var pick := mouse_pick()
-	if not pick.hit:
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_active() or not event is InputEventKey or not event.pressed or event.echo:
 		return
-	_dragging = true
-	_start = BuildGrid.snap_to_airside(BuildGrid.world_to_corner(pick.position))
-	_end = _start
+	if event.physical_keycode == KEY_R:
+		_facing = posmod(_facing + (-1 if event.shift_pressed else 1), DIRECTIONS.size())
+		get_viewport().set_input_as_handled()
 
 
 func release(_tile: Vector2i, _in_plot: bool) -> void:
-	if not _dragging:
+	if not _has_hover:
 		return
-	_dragging = false
-	if _end == _start:
-		return
-	var command := PlaceRunwayCommandScript.new(_def_id, _start, _end)
+	var ends := _ends(RunwayCatalog.get_def(_def_id))
+	var command := PlaceRunwayCommandScript.new(_def_id, ends[0], ends[1])
 	if command_runner.submit(command):
 		var runway: RefCounted = runways.get_runway(command.runway_id)
 		print("BUILD | %s runway %s/%s, %d m x %d m, ends at %s and %s" % [_def_id,
@@ -96,16 +89,10 @@ func release(_tile: Vector2i, _in_plot: bool) -> void:
 			runway.ends[0].position, runway.ends[1].position])
 
 
-func cancel_drag() -> void:
-	_dragging = false
-
-
 func get_hint() -> String:
-	var def := RunwayCatalog.get_def(_def_id)
-	if def == null:
+	if RunwayCatalog.get_def(_def_id) == null:
 		return "No runway sizes in data/runways/"
-	return "Drag from the start point: %s-%s m along the grid   Right click / Esc: cancel" % [
-		_number(def.min_length), _number(def.max_length)]
+	return "Click: place runway   R / Shift+R: rotate   Right click / Esc: cancel"
 
 
 # --- Build menu -------------------------------------------------------------------
@@ -114,10 +101,10 @@ func get_hint() -> String:
 func get_menu_items() -> Array[Dictionary]:
 	var items: Array[Dictionary] = []
 	for def: Resource in RunwayCatalog.get_all():
-		var tooltip := "%s: %d m wide, %s-%s m long\n%s" % [def.display_name, def.width,
-			_number(def.min_length), _number(def.max_length), def.aircraft]
+		var tooltip := "%s: %s m x %d m\n%s" % [def.display_name, _number(def.length), def.width,
+			def.aircraft]
 		items.append(make_menu_item("runway:" + String(def.id), def.display_name, def.icon,
-			"%s / m" % Money.format(def.cost_per_metre), def.menu_category, tooltip))
+			Money.format(def.get_cost(def.length)), def.menu_category, tooltip))
 	return items
 
 
@@ -132,60 +119,44 @@ func get_active_item_id() -> String:
 
 func get_title() -> String:
 	var def := RunwayCatalog.get_def(_def_id)
-	return "%s (%d m wide)" % [def.display_name, def.width] if def else tool_name
+	return "%s (%s m x %d m)" % [def.display_name, _number(def.length), def.width] if def else tool_name
 
 
 func get_cost_text() -> String:
 	var def := RunwayCatalog.get_def(_def_id)
-	return "%s / m" % Money.format(def.cost_per_metre) if def else ""
+	return Money.format(def.get_cost(def.length)) if def else ""
 
 
 # --- Preview ----------------------------------------------------------------------
 
-## Keeps the drag on one axis, in LENGTH_STEP steps, no longer than the size allows.
-func _snap_end(corner: Vector2i) -> Vector2i:
-	var def := RunwayCatalog.get_def(_def_id)
-	var d := corner - _start
-	var along_x := absi(d.x) >= absi(d.y)
-	var raw := absi(d.x) if along_x else absi(d.y)
-	var length := mini(roundi(float(raw) / LENGTH_STEP) * LENGTH_STEP, def.max_length)
-	var sign_ := signi(d.x if along_x else d.y)
-	if sign_ == 0:
-		sign_ = 1
-	var end := _start + (Vector2i(sign_ * length, 0) if along_x else Vector2i(0, sign_ * length))
-	return BuildGrid.clamp_corner_to_plot(end)
+## End A and end B on the centreline for a runway centred on _centre.
+func _ends(def: Resource) -> Array[Vector2i]:
+	var half: Vector2i = DIRECTIONS[_facing] * (def.length / 2)
+	return [_centre - half, _centre + half]
 
 
-func _update_ghost() -> void:
-	var def := RunwayCatalog.get_def(_def_id)
-	var shown := def != null and (_dragging or _has_hover)
-	_ghost.visible = shown
-	_label.visible = shown and _dragging
-	if not shown:
+func _update_ghost(def: Resource) -> void:
+	_ghost.visible = _has_hover
+	_label.visible = _has_hover
+	if not _has_hover:
 		return
 
-	var a := _start if _dragging else _hover_corner
-	var b := _end if _dragging else _hover_corner
-	var rect: Rect2i = runways.footprint(def, a, b)
-	if a == b:
-		rect = Rect2i(a - Vector2i.ONE * floori(def.width * 0.5), Vector2i.ONE * def.width)  # a square marks the start point
+	var ends := _ends(def)
+	var rect: Rect2i = runways.footprint(def, ends[0], ends[1])
 	var lo := BuildGrid.tile_corner_to_world(rect.position, get_floor())
 	var hi := BuildGrid.tile_corner_to_world(rect.end, get_floor())
 	_ghost.global_position = (lo + hi) * 0.5 + Vector3.UP * GHOST_HEIGHT * 0.5
 	_ghost.scale = Vector3(hi.x - lo.x, GHOST_HEIGHT, hi.z - lo.z)
 
-	if not _dragging:
-		_ghost.material_override = ghost_material(true)
-		return
-	var p := PlaceRunwayCommandScript.new(_def_id, _start, _end).preview(command_runner)
+	var p := PlaceRunwayCommandScript.new(_def_id, ends[0], ends[1]).preview(command_runner)
 	var reason: String = p.error
 	if reason == "" and not Money.can_afford(p.cost):
 		reason = price_text(-p.cost)
 	_ghost.material_override = ghost_material(reason == "")
-	var axis := (_end - _start).sign()
-	var heading := RunwayScript.heading_of(Vector3(axis.x, 0.0, axis.y)) if _end != _start else 90.0
+	var axis := DIRECTIONS[_facing]
+	var heading := RunwayScript.heading_of(Vector3(axis.x, 0.0, axis.y))
 	var names := "%s/%s" % [RunwayScript.designator_of(heading), RunwayScript.designator_of(heading + 180.0)]
-	var size := "%s m x %d m" % [_number(p.length), def.width]
+	var size := "%s m x %d m" % [_number(def.length), def.width]
 	if reason == "":
 		_label.text = "%s   %s   %s   %s" % [def.display_name, names, size, Money.format(p.cost)]
 		_label.modulate = Color.WHITE

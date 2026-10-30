@@ -31,13 +31,18 @@ func load_all() -> void:
 		if def.width < 2 or def.width % 2 != 0 or def.min_length < 1 or def.max_length < def.min_length:
 			push_warning("RunwayCatalog: %s needs an even width and a valid length range" % file)
 			continue
+		if def.length < def.min_length or def.length > def.max_length \
+				or def.length % (2 * BuildGrid.AIRSIDE_SNAP) != 0:
+			push_warning("RunwayCatalog: %s needs a length inside its range, in steps of %d m" % [
+				file, 2 * BuildGrid.AIRSIDE_SNAP])
+			continue
 		_defs[def.id] = def
 		_ordered.append(def)
 	_ordered.sort_custom(func(a: RunwayDefScript, b: RunwayDefScript) -> bool:
 		return RunwayDefScript.SIZE_CLASSES.find(a.size_class) < RunwayDefScript.SIZE_CLASSES.find(b.size_class))
 	print("RUNWAYS | %d runway sizes loaded: %s" % [_ordered.size(),
 		", ".join(_ordered.map(func(d: RunwayDefScript) -> String:
-			return "%s (%d m wide, %d-%d m)" % [d.id, d.width, d.min_length, d.max_length]))])
+			return "%s (%d m x %d m)" % [d.id, d.length, d.width]))])
 
 
 ## The definition with this ID, or null.

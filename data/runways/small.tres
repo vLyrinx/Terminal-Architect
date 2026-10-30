@@ -9,6 +9,7 @@ id = &"small"
 display_name = "Small runway"
 size_class = "small"
 width = 30
+length = 1800
 min_length = 1200
 max_length = 1800
 cost_per_metre = 60

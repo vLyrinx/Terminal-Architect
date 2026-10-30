@@ -14,7 +14,12 @@ const SIZE_CLASSES := ["small", "medium", "large"]
 @export_enum("small", "medium", "large") var size_class := "small"
 ## Paved width in metres. Must be even, so the centreline is on a grid line.
 @export var width := 30
-## Shortest and longest length the player can build, in metres.
+## Length of the runway the build tool places, in metres. A multiple of twice
+## BuildGrid.AIRSIDE_SNAP, so both ends land on the airside grid when the
+## centre does.
+@export var length := 1800
+## Shortest and longest length a runway of this size may have, in metres
+## (checked for every placement, including saves and tests).
 @export var min_length := 1200
 @export var max_length := 1800
 ## Price per metre of length.
@@ -28,8 +33,8 @@ const SIZE_CLASSES := ["small", "medium", "large"]
 
 
 ## Construction price of a runway of this size and length.
-func get_cost(length: int) -> int:
-	return length * cost_per_metre
+func get_cost(metres: int) -> int:
+	return metres * cost_per_metre
 
 
 ## True if this runway can handle aircraft of size_class (or any smaller class).

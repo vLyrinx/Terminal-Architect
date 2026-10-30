@@ -9,6 +9,7 @@ id = &"medium"
 display_name = "Medium runway"
 size_class = "medium"
 width = 46
+length = 2400
 min_length = 1800
 max_length = 3000
 cost_per_metre = 100
