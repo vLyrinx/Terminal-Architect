@@ -12,7 +12,16 @@ signal changed(key: String, value: Variant)
 const PATH := "user://settings.cfg"
 const SECTION := "settings"
 
-const RESOLUTIONS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080)]
+## Common PC resolutions (16:9, 16:10, 4:3, 5:4 and ultrawide), smallest first.
+## The settings screen only offers the ones that fit the player's monitor.
+const RESOLUTIONS: Array[Vector2i] = [
+	Vector2i(1024, 576), Vector2i(1024, 768), Vector2i(1152, 648), Vector2i(1280, 720),
+	Vector2i(1280, 800), Vector2i(1280, 960), Vector2i(1280, 1024), Vector2i(1360, 768),
+	Vector2i(1366, 768), Vector2i(1440, 900), Vector2i(1536, 864), Vector2i(1600, 900),
+	Vector2i(1600, 1200), Vector2i(1680, 1050), Vector2i(1920, 1080), Vector2i(1920, 1200),
+	Vector2i(2560, 1080), Vector2i(2560, 1440), Vector2i(2560, 1600), Vector2i(3440, 1440),
+	Vector2i(3840, 1600), Vector2i(3840, 2160),
+]
 ## Frame rate caps; 0 means unlimited.
 const FPS_CAPS: Array[int] = [30, 60, 120, 0]
 const SENSITIVITY_MIN := 0.25
@@ -49,6 +58,20 @@ func set_value(key: String, value: Variant) -> void:
 	_apply(key)
 	_save()
 	changed.emit(key, value)
+
+
+## The resolutions that fit on the screen the window is on (always at least one).
+func get_available_resolutions() -> Array[Vector2i]:
+	if DisplayServer.get_name() == "headless":
+		return RESOLUTIONS.duplicate()
+	var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	var fits: Array[Vector2i] = []
+	for r in RESOLUTIONS:
+		if r.x <= screen.x and r.y <= screen.y:
+			fits.append(r)
+	if fits.is_empty():
+		fits.append(RESOLUTIONS[0])
+	return fits
 
 
 ## Multiplier for the camera's mouse drag rotation (orbit_camera.gd).

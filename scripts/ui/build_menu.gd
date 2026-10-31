@@ -15,8 +15,11 @@ const UITheme := preload("res://scripts/ui/ui_theme.gd")
 const BuildCategories := preload("res://scripts/ui/build_categories.gd")
 ## A right click counts as a click (not a camera drag) if the mouse moves less than this, in pixels.
 const CLICK_TOLERANCE := 6.0
-const CARD_SIZE := Vector2(108, 100)
-const CARD_ICON_SIZE := Vector2(34, 34)
+## Half the original size (step 41) so the menu leaves more of the airport in view.
+const CARD_SIZE := Vector2(76, 50)
+const CARD_ICON_SIZE := Vector2(18, 18)
+const FONT_SIZE := 11
+const FONT_SIZE_SMALL := 10
 
 ## The BuildManager node (build_manager.gd).
 @export var build_manager: Node3D
@@ -46,26 +49,26 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.alignment = BoxContainer.ALIGNMENT_END
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 3)
 	add_child(column)
 	column.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	column.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	column.offset_bottom = -8
+	column.offset_bottom = -4
 
 	# Selected tool and its controls
 	_tool_info = PanelContainer.new()
 	_tool_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tool_info.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_tool_info.add_theme_stylebox_override("panel", UITheme.panel_style(Color(UITheme.BAR, 0.92), UITheme.RADIUS, 14, 5))
+	_tool_info.add_theme_stylebox_override("panel", UITheme.panel_style(Color(UITheme.BAR, 0.92), UITheme.RADIUS, 8, 2))
 	column.add_child(_tool_info)
 	var info := VBoxContainer.new()
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_theme_constant_override("separation", 0)
 	_tool_info.add_child(info)
-	_tool_title = UITheme.label("", UITheme.FONT_SIZE)
+	_tool_title = UITheme.label("", FONT_SIZE)
 	_tool_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_child(_tool_title)
-	_tool_hint = UITheme.label("", UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	_tool_hint = UITheme.label("", FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	_tool_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_child(_tool_hint)
 
@@ -75,23 +78,23 @@ func _ready() -> void:
 	column.add_child(_item_panel)
 	var panel_box := VBoxContainer.new()
 	panel_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel_box.add_theme_constant_override("separation", 6)
+	panel_box.add_theme_constant_override("separation", 0)
 	_item_panel.add_child(panel_box)
-	_item_title = UITheme.label("", UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	_item_title = UITheme.label("", FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	panel_box.add_child(_item_title)
 	_item_row = HBoxContainer.new()
 	_item_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_item_row.add_theme_constant_override("separation", 6)
+	_item_row.add_theme_constant_override("separation", 3)
 	panel_box.add_child(_item_row)
 
 	# Category bar
 	var bar := PanelContainer.new()
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	bar.add_theme_stylebox_override("panel", UITheme.panel_style(UITheme.BAR, UITheme.RADIUS + 2, 6, 6))
+	bar.add_theme_stylebox_override("panel", UITheme.panel_style(UITheme.BAR, UITheme.RADIUS, 3, 3))
 	column.add_child(bar)
 	var bar_row := HBoxContainer.new()
 	bar_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar_row.add_theme_constant_override("separation", 6)
+	bar_row.add_theme_constant_override("separation", 3)
 	bar.add_child(bar_row)
 	for category: Dictionary in BuildCategories.LIST:
 		var b := Button.new()
@@ -99,11 +102,15 @@ func _ready() -> void:
 		b.icon = category.icon
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(84, 58)
-		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_constant_override("icon_max_width", 26)
-		b.add_theme_font_size_override("font_size", UITheme.FONT_SIZE_SMALL)
+		b.custom_minimum_size = Vector2(0, 29)
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_constant_override("icon_max_width", 16)
+		b.add_theme_stylebox_override("normal", UITheme.flat(UITheme.BUTTON, 4, 6, 2))
+		b.add_theme_stylebox_override("hover", UITheme.flat(UITheme.BUTTON_HOVER, 4, 6, 2))
+		b.add_theme_stylebox_override("pressed", UITheme.flat(UITheme.ACCENT, 4, 6, 2))
+		b.add_theme_stylebox_override("hover_pressed", UITheme.flat(UITheme.ACCENT_HOVER, 4, 6, 2))
+		b.add_theme_stylebox_override("disabled", UITheme.flat(Color(UITheme.BUTTON, 0.45), 4, 6, 2))
+		b.add_theme_font_size_override("font_size", FONT_SIZE)
 		b.pressed.connect(_on_category_pressed.bind(category.id))
 		bar_row.add_child(b)
 		_category_buttons[category.id] = b
@@ -190,13 +197,13 @@ func _make_card(item: Dictionary) -> Button:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 0)
 	card.add_child(box)
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	box.offset_left = 4
-	box.offset_right = -4
-	box.offset_top = 4
-	box.offset_bottom = -4
+	box.offset_left = 2
+	box.offset_right = -2
+	box.offset_top = 2
+	box.offset_bottom = -2
 
 	var icon := TextureRect.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -206,14 +213,14 @@ func _make_card(item: Dictionary) -> Button:
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	box.add_child(icon)
 
-	var name_label := UITheme.label(item.name, UITheme.FONT_SIZE_SMALL)
+	var name_label := UITheme.label(item.name, FONT_SIZE_SMALL)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.max_lines_visible = 2
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.clip_text = true
 	box.add_child(name_label)
 
 	if item.cost != "":
-		var cost_label := UITheme.label(item.cost, UITheme.FONT_SIZE_SMALL, UITheme.MONEY)
+		var cost_label := UITheme.label(item.cost, FONT_SIZE_SMALL, UITheme.MONEY)
 		cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(cost_label)
 	return card

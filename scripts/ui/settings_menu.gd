@@ -24,6 +24,8 @@ const CONTROLS := [
 
 var _display_mode: OptionButton
 var _resolution: OptionButton
+## The resolutions offered in _resolution (the ones that fit this monitor).
+var _resolutions: Array[Vector2i] = []
 var _fps_cap: OptionButton
 var _vsync: CheckButton
 var _volume: HSlider
@@ -52,11 +54,12 @@ func _ready() -> void:
 	_display_mode.item_selected.connect(func(i: int) -> void: Settings.set_value("fullscreen", i == 1))
 
 	var resolutions: Array = []
-	for r in Settings.RESOLUTIONS:
+	_resolutions = Settings.get_available_resolutions()
+	for r in _resolutions:
 		resolutions.append("%d x %d" % [r.x, r.y])
 	_resolution = _option(grid, "Resolution", resolutions)
 	_resolution.item_selected.connect(func(i: int) -> void:
-		Settings.set_value("resolution", Settings.RESOLUTIONS[i]))
+		Settings.set_value("resolution", _resolutions[i]))
 
 	var caps: Array = []
 	for cap in Settings.FPS_CAPS:
@@ -85,14 +88,18 @@ func _ready() -> void:
 	back.pressed.connect(func() -> void: back_pressed.emit())
 	column.add_child(back)
 
-	Settings.changed.connect(func(_key: String, _value: Variant) -> void: _refresh())
+	Settings.changed.connect(_on_settings_changed)
+	_refresh()
+
+
+func _on_settings_changed(_key: String, _value: Variant) -> void:
 	_refresh()
 
 
 ## Shows the saved values (without emitting the controls' own signals).
 func _refresh() -> void:
 	_display_mode.select(1 if Settings.get_value("fullscreen") else 0)
-	_resolution.select(maxi(Settings.RESOLUTIONS.find(Settings.get_value("resolution")), 0))
+	_resolution.select(maxi(_resolutions.find(Settings.get_value("resolution")), 0))
 	_resolution.disabled = Settings.get_value("fullscreen")
 	_fps_cap.select(maxi(Settings.FPS_CAPS.find(Settings.get_value("fps_cap")), 0))
 	_vsync.set_pressed_no_signal(Settings.get_value("vsync"))
