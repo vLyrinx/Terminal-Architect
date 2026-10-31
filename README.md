@@ -31,7 +31,7 @@ Grab the latest prototype from the [Releases page](https://github.com/vLyrinx/Te
 
 ## Help wanted
 
-We'd love help from people who want to build a game like this. You don't need to be an expert. Some areas where help would make a real difference:
+I'd love help from people who want to build a game like this, I have little experience, so i'm using the dreaded overlord AI tools to help. You don't need to be an expert, But someone with more experience than me would be awesome! Some areas where help would make a real difference:
 
 - **Godot and GDScript developers:** building systems such as flights, pathfinding, the economy and multiplayer.
 - **3D artists:** low-poly aircraft, terminal objects and vehicles in a clean, bright style.
