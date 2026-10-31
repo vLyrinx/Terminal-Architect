@@ -85,6 +85,9 @@ var _alert_log: Array[String] = []
 var _boarded_by_flight := {}
 ## Flight id -> game time it pushed back.
 var _off_block := {}
+## Stand ids and gate ids that flights were given.
+var _stands_used := {}
+var _gates_used := {}
 ## Departures whose time came during the run (FlightSchedule drops old flights, so they are kept here).
 var _due_departures: Array[FlightScript] = []
 
@@ -233,6 +236,13 @@ func _connect_logs() -> void:
 		_count("boarded")
 		if p.flight:
 			_boarded_by_flight[p.flight.id] = _boarded_by_flight.get(p.flight.id, 0) + 1)
+	_main.get_node("StandAllocator").stand_assigned.connect(func(_f: FlightScript, stand_id: int) -> void:
+		_stands_used[stand_id] = _stands_used.get(stand_id, 0) + 1)
+	_gates.boarding_opened.connect(func(f: FlightScript) -> void:
+		var gate: RefCounted = _gates.get_gate_for(f)
+		if gate:
+			_gates_used[gate.id] = _gates_used.get(gate.id, 0) + 1
+			print("PLAYTEST | %s boarding at gate #%d for stand %d" % [f.flight_number, gate.id, f.stand_id]))
 	_arrivals.passenger_exited.connect(func(_p: PassengerScript) -> void: _count("arrivals_out"))
 	_missed.passenger_missed.connect(func(_p: PassengerScript) -> void: _count("missed"))
 	_spawner.passenger_arrived.connect(func(_p: PassengerScript) -> void: _count("came_in"))
@@ -335,6 +345,8 @@ func _check_end() -> void:
 				and p.state != State.MISSED:
 			lost += 1
 	_expect("no passenger left behind by a departed flight without being counted missed (%d)" % lost, lost == 0)
+	_expect("flights used all 3 stands (rotations per stand: %s)" % _stands_used, _stands_used.size() == 3)
+	_expect("boarding used all 3 gates (flights per gate: %s)" % _gates_used, _gates_used.size() == 3)
 	_expect("no flight lacked a runway or taxi route", total.get("runway_missing", 0) == 0 and total.get("taxi_missing", 0) == 0)
 	var totals: Dictionary = Money.get_totals()
 	print("INFO | money totals by category: %s" % totals)

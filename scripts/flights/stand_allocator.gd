@@ -4,7 +4,9 @@ extends Node
 ## the stand from just before arrival until just after its paired departure
 ## (the turnaround). Both flights of the rotation get the stand_id.
 ## The smallest stand size that fits is preferred, so big stands stay free for
-## big aircraft. If no stand is free a warning is shown once per flight, and
+## big aircraft; among those, the stand that has gone longest without a flight,
+## so flights (and their gates) are spread over every stand rather than all
+## using the first one. If no stand is free a warning is shown once per flight, and
 ## allocation keeps retrying (a stand may be built or freed in time).
 ## Reservations end on their own once the departure time has passed, or as
 ## soon as the aircraft has been pushed back off the stand (free_stand).
@@ -33,6 +35,8 @@ signal allocation_failed(flight: FlightScript)
 var _reservations := {}
 ## Arrival flight IDs already warned about.
 var _warned := {}
+## stand_id -> start of the latest reservation given to it (never used: not listed).
+var _last_used := {}
 
 
 func _ready() -> void:
@@ -123,10 +127,12 @@ func get_reservation_window(arrival: FlightScript) -> Vector2i:
 
 
 ## The best free, connected stand for this aircraft type between from and to,
-## or -1: the smallest size that fits, then the lowest stand number.
+## or -1: the smallest size that fits, then the one used longest ago (never
+## used first), then the lowest stand number.
 func find_free_stand(type_id: StringName, from: int, to: int) -> int:
 	var best := -1
 	var best_rank := 1 << 30
+	var best_used := 0
 	for stand: RefCounted in stands.get_all():
 		var def: Resource = StandCatalog.get_def(stand.def_id)
 		if def == null or not def.takes(type_id) or not stand.has_taxiway():
@@ -134,9 +140,12 @@ func find_free_stand(type_id: StringName, from: int, to: int) -> int:
 		if not is_free(stand.id, from, to):
 			continue
 		var rank: int = SizeClassDefScript.IDS.find(def.size_class)
-		if rank < best_rank or (rank == best_rank and stand.id < best):
+		var used: int = _last_used.get(stand.id, -(1 << 62))
+		if best == -1 or rank < best_rank or (rank == best_rank and (used < best_used
+				or (used == best_used and stand.id < best))):
 			best = stand.id
 			best_rank = rank
+			best_used = used
 	return best
 
 
@@ -159,6 +168,7 @@ func _reserve(stand_id: int, window: Vector2i, arrival: FlightScript) -> void:
 	var list: Array = _reservations[stand_id]
 	list.append({"from": window.x, "to": window.y, "arrival": arrival})
 	list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.from < b.from)
+	_last_used[stand_id] = maxi(_last_used.get(stand_id, window.x), window.x)
 	_update_note(stand_id)
 
 
@@ -183,6 +193,7 @@ func _on_stand_removed(stand_id: int) -> void:
 			arrival.pair.stand_id = -1
 		print("STAND | %s lost stand %d (removed)" % [_rotation_name(arrival), stand_id])
 	_reservations.erase(stand_id)
+	_last_used.erase(stand_id)
 	_request()
 
 
