@@ -12,6 +12,9 @@ const SPEED_KEYS := ["1", "2", "3"]
 const CHANGE_SHOW_TIME := 2.5
 const HEIGHT := 40.0
 
+## The flight list screen (flight_list.gd), opened by the Flights button (step 37).
+@export var flight_list: Control
+
 var _balance: Label
 var _change: Label
 var _change_timer := 0.0
@@ -61,6 +64,15 @@ func _ready() -> void:
 	right.alignment = BoxContainer.ALIGNMENT_END
 	right.add_theme_constant_override("separation", 4)
 	row.add_child(right)
+	if flight_list != null:
+		var flights := _make_button("Flights", "Today's flights (F5)")
+		flights.custom_minimum_size.x = 72
+		flights.pressed.connect(flight_list.toggle)
+		flight_list.toggled.connect(flights.set_pressed_no_signal)
+		right.add_child(flights)
+		var gap := Control.new()
+		gap.custom_minimum_size.x = 12
+		right.add_child(gap)
 	_pause_button = _make_button("", "Pause (Space)")
 	_pause_button.icon = PAUSE_ICON
 	_pause_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER

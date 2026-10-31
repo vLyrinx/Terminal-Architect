@@ -209,6 +209,12 @@ func _register_input_actions() -> void:
 			InputMap.action_add_event(action, key)
 
 
+## Glides the camera over to look at a ground point (keeping its angle and zoom).
+func focus_on(point: Vector3) -> void:
+	_target_focus = point
+	_clamp_targets()
+
+
 # --- Queries --------------------------------------------------------------------
 
 ## The ground point the camera is looking at.

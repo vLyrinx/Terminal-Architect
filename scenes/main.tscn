@@ -22,7 +22,7 @@
 [ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="25_topbar"]
 [ext_resource type="Script" path="res://scripts/ui/build_menu.gd" id="26_buildmenu"]
 [ext_resource type="Script" path="res://scripts/ui/debug_overlay.gd" id="27_debug"]
-[ext_resource type="Script" path="res://scripts/ui/flight_list_debug.gd" id="60_flightlist"]
+[ext_resource type="Script" path="res://scripts/ui/flight_list.gd" id="60_flightlist"]
 [ext_resource type="Script" path="res://scripts/flights/stand_allocator.gd" id="61_allocator"]
 [ext_resource type="Script" path="res://scripts/flights/air_traffic.gd" id="62_airtraffic"]
 [ext_resource type="Script" path="res://scripts/building/tools/demolish_tool.gd" id="28_demolish"]
@@ -418,13 +418,14 @@ mouse_filter = 2
 script = ExtResource("26_buildmenu")
 build_manager = NodePath("../../../Building")
 
-[node name="TopBar" type="PanelContainer" parent="UI/Root"]
+[node name="TopBar" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("flight_list")]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 40.0
 grow_horizontal = 2
 script = ExtResource("25_topbar")
+flight_list = NodePath("../FlightList")
 
 [node name="DebugOverlay" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("tile_highlighter", "route_graph")]
 layout_mode = 0
@@ -436,19 +437,6 @@ mouse_filter = 2
 script = ExtResource("27_debug")
 tile_highlighter = NodePath("../../../TileHighlight")
 route_graph = NodePath("../../../RouteGraph")
-
-[node name="FlightListDebug" type="PanelContainer" parent="UI/Root"]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -520.0
-offset_top = 48.0
-offset_right = -8.0
-offset_bottom = 88.0
-grow_horizontal = 0
-mouse_filter = 2
-script = ExtResource("60_flightlist")
 
 [node name="MessageToast" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("command_runner")]
 layout_mode = 0
@@ -473,3 +461,15 @@ placed_objects = NodePath("../../../PlacedObjects")
 check_in = NodePath("../../../CheckIn")
 security = NodePath("../../../Security")
 gates = NodePath("../../../Gates")
+
+[node name="FlightList" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("air_traffic", "stands", "inspector", "camera")]
+layout_mode = 0
+offset_left = 200.0
+offset_top = 100.0
+offset_right = 900.0
+offset_bottom = 500.0
+script = ExtResource("60_flightlist")
+air_traffic = NodePath("../../../AirTraffic")
+stands = NodePath("../../../Stands")
+inspector = NodePath("../Inspector")
+camera = NodePath("../../../Camera3D")
