@@ -1,6 +1,6 @@
 # Contributing to Terminal Architect
 
-Thanks for wanting to help. Terminal Architect is an early prototype, so there's plenty to do and no wrong place to start.
+Thanks for wanting to help. Terminal Architect is an early prototype, so there's plenty to do and no wrong place to start. If enough people message me about this project I will create a Discord so we can all communicate easily.
 
 ## Getting set up
 
