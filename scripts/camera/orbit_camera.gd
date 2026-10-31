@@ -104,8 +104,10 @@ func _input(event: InputEvent) -> void:
 			_panning = false
 	elif event is InputEventMouseMotion:
 		if _rotating:
-			_target_yaw -= deg_to_rad(event.relative.x * drag_rotate_sensitivity)
-			_target_pitch += deg_to_rad(event.relative.y * drag_rotate_sensitivity)
+			# Scaled by the player's camera mouse sensitivity (Settings autoload, step 41).
+			var sensitivity := drag_rotate_sensitivity * Settings.get_mouse_sensitivity()
+			_target_yaw -= deg_to_rad(event.relative.x * sensitivity)
+			_target_pitch += deg_to_rad(event.relative.y * sensitivity)
 			_clamp_targets()
 		elif _panning:
 			_drag_pan(event.relative)

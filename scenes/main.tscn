@@ -1,4 +1,4 @@
-[gd_scene load_steps=64 format=3]
+[gd_scene load_steps=65 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -60,6 +60,7 @@
 [ext_resource type="Script" path="res://scripts/ui/inspector.gd" id="72_inspector"]
 [ext_resource type="Script" path="res://scripts/ui/alerts.gd" id="73_alerts"]
 [ext_resource type="Script" path="res://scripts/ui/airport_checks.gd" id="74_checks"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="75_pause"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -278,6 +279,20 @@ terminal_walls = NodePath("../TerminalWalls")
 
 [node name="ScaleMarkers" type="Node3D" parent="."]
 script = ExtResource("4_markers")
+
+[node name="PauseLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="PauseMenu" type="Control" parent="PauseLayer" node_paths=PackedStringArray("build_manager", "camera")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("75_pause")
+build_manager = NodePath("../../Building")
+camera = NodePath("../../Camera3D")
 
 [node name="Building" type="Node3D" parent="."]
 script = ExtResource("7_build")

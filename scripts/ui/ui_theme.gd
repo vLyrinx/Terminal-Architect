@@ -20,6 +20,12 @@ const DANGER_BG := Color("b83a3a")
 const FONT_SIZE := 14
 const FONT_SIZE_SMALL := 12
 const FONT_SIZE_LARGE := 18
+## Menu screens (main menu, settings, pause menu, step 41) all use this size
+## and menu_button(), so they read the same at 1080p and on a small laptop.
+const MENU_FONT_SIZE := 18
+const MENU_TITLE_SIZE := 44
+const MENU_BUTTON_SIZE := Vector2(240, 44)
+const MENU_BACKGROUND := Color("d9e7f4")
 const RADIUS := 6
 
 
@@ -47,6 +53,34 @@ static func build() -> Theme:
 	theme.set_color("font_disabled_color", "Button", TEXT_DISABLED)
 	theme.set_color("icon_disabled_color", "Button", Color(1, 1, 1, 0.3))
 	return theme
+
+
+## The shared theme for menu screens: the game theme at MENU_FONT_SIZE, plus
+## flat dropdowns, sliders and toggles for the settings screen.
+static func build_menu() -> Theme:
+	var theme := build()
+	theme.default_font_size = MENU_FONT_SIZE
+	theme.set_stylebox("panel", "PopupMenu", panel_style(BAR, 4, 6, 6))
+	theme.set_stylebox("hover", "PopupMenu", flat(BUTTON_HOVER, 4))
+	theme.set_color("font_color", "PopupMenu", TEXT)
+	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
+	theme.set_font_size("font_size", "PopupMenu", MENU_FONT_SIZE)
+	theme.set_stylebox("slider", "HSlider", flat(BUTTON, 3, 0, 3))
+	theme.set_stylebox("grabber_area", "HSlider", flat(ACCENT, 3, 0, 3))
+	theme.set_stylebox("grabber_area_highlight", "HSlider", flat(ACCENT_HOVER, 3, 0, 3))
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		theme.set_stylebox(state, "CheckButton", StyleBoxEmpty.new())
+	for color: String in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		theme.set_color(color, "CheckButton", TEXT)
+	return theme
+
+
+## A menu button: the same size and style on every menu screen.
+static func menu_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = MENU_BUTTON_SIZE
+	return button
 
 
 static func flat(color: Color, radius := RADIUS, margin_h := 10, margin_v := 6) -> StyleBoxFlat:

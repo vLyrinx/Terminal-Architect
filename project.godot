@@ -10,13 +10,14 @@ config_version=5
 
 [application]
 
-config/name="Test"
-run/main_scene="res://scenes/main.tscn"
+config/name="Terminal Architect"
+run/main_scene="res://scenes/menu/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
+Settings="*res://scripts/core/settings.gd"
 GameClock="*res://scripts/core/game_clock.gd"
 BuildGrid="*res://scripts/building/build_grid.gd"
 ObjectCatalog="*res://scripts/objects/object_catalog.gd"
