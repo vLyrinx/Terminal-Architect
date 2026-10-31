@@ -1,4 +1,4 @@
-[gd_scene load_steps=60 format=3]
+[gd_scene load_steps=61 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -56,6 +56,7 @@
 [ext_resource type="Script" path="res://scripts/passengers/gates.gd" id="68_gates"]
 [ext_resource type="Script" path="res://scripts/passengers/arrivals.gd" id="69_arrivals"]
 [ext_resource type="Script" path="res://scripts/passengers/missed_flights.gd" id="70_missed"]
+[ext_resource type="Script" path="res://scripts/economy/airport_fees.gd" id="71_fees"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -236,6 +237,11 @@ spawner = NodePath("../PassengerSpawner")
 check_in = NodePath("../CheckIn")
 security = NodePath("../Security")
 gates = NodePath("../Gates")
+
+[node name="AirportFees" type="Node" parent="." node_paths=PackedStringArray("air_traffic", "arrivals")]
+script = ExtResource("71_fees")
+air_traffic = NodePath("../AirTraffic")
+arrivals = NodePath("../Arrivals")
 
 [node name="RouteGraphOverlay" type="MeshInstance3D" parent="." node_paths=PackedStringArray("route_graph")]
 script = ExtResource("41_graphoverlay")

@@ -9,3 +9,6 @@ sale_refund = 0.5
 floor_tile_cost = 25
 wall_cost = 150
 door_cost = 800
+landing_fee = 2500
+passenger_fee = 15
+daily_running_cost = 20000

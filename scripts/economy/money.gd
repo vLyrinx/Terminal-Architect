@@ -18,7 +18,8 @@ signal transaction_recorded(transaction: Dictionary)
 const EconomySettingsScript := preload("res://scripts/economy/economy_settings.gd")
 const SETTINGS_PATH := "res://data/economy.tres"
 ## Transaction categories, in finance screen order.
-const CATEGORIES: Array[StringName] = [&"starting_money", &"construction", &"sale"]
+const CATEGORIES: Array[StringName] = [&"starting_money", &"construction", &"sale", &"landing_fees",
+	&"passenger_fees", &"running_costs"]
 ## The player on this computer. Co-op will give other players other numbers.
 const LOCAL_PLAYER := 1
 

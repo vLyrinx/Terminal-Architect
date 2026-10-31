@@ -19,3 +19,10 @@ extends Resource
 @export var taxi_line_cost_per_metre := 5
 ## Price of one tile (1 x 1 m) of taxiway paving.
 @export var taxiway_tile_cost := 2
+
+## Airport fees (step 35): paid by the airline for each landing, and for
+## each passenger who gets off an arrival or boards a departure.
+@export var landing_fee := 2500
+@export var passenger_fee := 15
+## Running cost (utilities, upkeep) the airport pays at the end of every game day.
+@export var daily_running_cost := 20000
