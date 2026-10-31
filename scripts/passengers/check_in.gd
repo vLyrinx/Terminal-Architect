@@ -142,6 +142,19 @@ func _assign(p: PassengerScript) -> void:
 	spawner.walk(p, best.spots[best.queue.size() - 1], _on_reached_spot)
 
 
+## Takes a passenger out of check-in (their desk's queue or the waiting list);
+## the people behind them step up.
+func drop(p: PassengerScript) -> void:
+	_waiting.erase(p)
+	var d: Desk = _desks.get(p.desk_id)
+	if d == null or not d.queue.has(p):
+		return
+	if d.serving == p:
+		d.serving = null
+	d.queue.erase(p)
+	_advance(d)
+
+
 func _on_reached_spot(p: PassengerScript) -> void:
 	var d: Desk = _desks.get(p.desk_id)
 	if d == null or not d.queue.has(p):

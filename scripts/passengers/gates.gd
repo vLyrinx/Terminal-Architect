@@ -21,8 +21,8 @@ extends Node
 ## every passenger of the flight is on board. AirTraffic keeps the aircraft
 ## on stand until then (is_boarding_finished()).
 ##
-## Passengers who reach the gate after boarding has closed wait there (step
-## 34 makes them miss the flight).
+## Passengers not on board when boarding finishes miss the flight
+## (MissedFlights, step 34).
 
 const PassengerScript := preload("res://scripts/passengers/passenger.gd")
 const PassengerSpawnerScript := preload("res://scripts/passengers/passenger_spawner.gd")
@@ -210,6 +210,16 @@ func get_gate_for(flight: FlightScript) -> Gate:
 	if gate != null:
 		_flight_gate[flight.id] = gate.id
 	return gate
+
+
+## Takes a passenger away from the gates (their seat, the desk queue or the
+## list of those still looking for a gate).
+func drop(p: PassengerScript) -> void:
+	_free_seat(p)
+	_waiting.erase(p)
+	var gate: Gate = _gates.get(p.gate_id)
+	if gate != null:
+		gate.scan_queue.erase(p)
 
 
 # --- Going to the gate ------------------------------------------------------------

@@ -147,6 +147,19 @@ func _assign(p: PassengerScript) -> void:
 	spawner.walk(p, best.spots[best.queue.size() - 1], _on_reached_spot)
 
 
+## Takes a passenger out of security (their scanner's queue or the waiting
+## list); the people behind them step up.
+func drop(p: PassengerScript) -> void:
+	_waiting.erase(p)
+	var s: Scanner = _scanners.get(p.scanner_id)
+	if s == null or not s.queue.has(p):
+		return
+	if s.serving == p:
+		s.serving = null
+	s.queue.erase(p)
+	_advance(s)
+
+
 func _on_reached_spot(p: PassengerScript) -> void:
 	var s: Scanner = _scanners.get(p.scanner_id)
 	if s == null or not s.queue.has(p):

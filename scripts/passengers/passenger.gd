@@ -8,12 +8,12 @@ extends RefCounted
 
 enum State { EXPECTED, ARRIVING, AT_ENTRANCE, WAITING_CHECKIN, TO_CHECKIN, QUEUING_CHECKIN, CHECKING_IN, CHECKED_IN,
 	TO_SECURITY, QUEUING_SECURITY, SCREENING, AIRSIDE, TO_GATE, AT_GATE, BOARDING, TO_AIRCRAFT,
-	BOARDED, TO_EXIT, EXITED }
+	BOARDED, TO_EXIT, EXITED, MISSED }
 
 const STATE_NAMES := ["Expected", "Arriving", "At entrance", "Waiting for a check-in desk", "Going to check-in",
 	"Queuing for check-in", "Checking in", "Checked in", "Going to security", "Queuing for security",
 	"Going through security", "Airside", "Going to the gate", "Waiting at the gate", "Boarding", "Walking to the aircraft",
-	"On board", "Walking to the exit", "Left the airport"]
+	"On board", "Walking to the exit", "Left the airport", "Missed their flight, leaving"]
 
 ## Unique for this game session.
 var id := 0
@@ -45,6 +45,8 @@ var seated := false
 ## Game time they were called to board, and boarded, or -1.
 var called_time := -1
 var boarded_time := -1
+## Game time they missed their flight, or -1 (step 34).
+var missed_time := -1
 
 ## Walking path (world points), the index of the next point, and where it ends.
 var path := PackedVector3Array()
