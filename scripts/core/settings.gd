@@ -29,7 +29,7 @@ const SENSITIVITY_MAX := 2.0
 
 const DEFAULTS := {
 	"fullscreen": false,
-	"resolution": Vector2i(1280, 720),  # windowed only
+	"resolution": Vector2i(1280, 720),  # window size, or 3D render size in fullscreen
 	"fps_cap": 60,
 	"vsync": true,
 	"master_volume": 100,  # percent
@@ -138,7 +138,9 @@ func _apply_window() -> void:
 		return
 	if _values.fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		_apply_render_scale()
 		return
+	get_tree().root.scaling_3d_scale = 1.0
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	# Never open a window bigger than the screen it is on.
@@ -148,3 +150,13 @@ func _apply_window() -> void:
 	size = Vector2i(mini(size.x, usable.size.x), mini(size.y, usable.size.y))
 	DisplayServer.window_set_size(size)
 	DisplayServer.window_set_position(usable.position + (usable.size - size) / 2)
+
+
+## Fullscreen always covers the whole monitor, so the chosen resolution sets the
+## size the 3D scene is drawn at, stretched to fill the screen. The UI is drawn
+## at the monitor's own size so text stays sharp. The scale follows the height,
+## so a 720-line resolution draws 720 lines whatever the monitor's shape.
+func _apply_render_scale() -> void:
+	var screen := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	var size: Vector2i = _values.resolution
+	get_tree().root.scaling_3d_scale = clampf(float(size.y) / screen.y, 0.25, 1.0)

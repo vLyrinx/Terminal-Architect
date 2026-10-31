@@ -100,7 +100,6 @@ func _on_settings_changed(_key: String, _value: Variant) -> void:
 func _refresh() -> void:
 	_display_mode.select(1 if Settings.get_value("fullscreen") else 0)
 	_resolution.select(maxi(_resolutions.find(Settings.get_value("resolution")), 0))
-	_resolution.disabled = Settings.get_value("fullscreen")
 	_fps_cap.select(maxi(Settings.FPS_CAPS.find(Settings.get_value("fps_cap")), 0))
 	_vsync.set_pressed_no_signal(Settings.get_value("vsync"))
 	_volume.set_value_no_signal(Settings.get_value("master_volume"))
