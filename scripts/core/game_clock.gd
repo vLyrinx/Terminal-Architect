@@ -23,9 +23,12 @@ signal speed_changed(speed: float, paused: bool)
 
 ## In-game seconds covered by one simulation tick.
 const TICK_GAME_SECONDS := 5.0
-## Real seconds an in-game day lasts at 1x speed (GDD: about 20 real minutes).
-const REAL_SECONDS_PER_GAME_DAY_AT_1X := 1200.0
-## Ratio of in-game time to real time at 1x (86400 / 1200 = 72).
+## Real seconds an in-game day lasts at 1x speed: 48 real minutes. The GDD
+## started at 20, but then a walk through the terminal took over an hour
+## (prototype playtest, step 40); at 48 people and aircraft can move at game
+## speeds that keep to the schedule while still looking believable at 1x.
+const REAL_SECONDS_PER_GAME_DAY_AT_1X := 2880.0
+## Ratio of in-game time to real time at 1x (86400 / 2880 = 30).
 const GAME_SECONDS_PER_REAL_SECOND := 86400.0 / REAL_SECONDS_PER_GAME_DAY_AT_1X
 ## Safety limit so a long frame stall can't freeze the game catching up.
 const MAX_TICKS_PER_FRAME := 200

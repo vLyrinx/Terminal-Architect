@@ -57,6 +57,9 @@ var _rebuild_all := false
 var _notify := false
 ## Object id -> its tiles, so a removed object's tiles can be freed.
 var _object_tiles := {}
+## Access -> connected area label per grid cell (0 = solid), worked out on
+## first use after each layout change, for can_reach().
+var _areas := {}
 
 
 func _ready() -> void:
@@ -106,6 +109,23 @@ func find_path(from: Vector3, to: Vector3, access: int, allow_partial := false) 
 		result.append(_cell_to_world(cells[i]))
 	result.append(_surface(to) if reached else _cell_to_world(cells[cells.size() - 1]))
 	return result
+
+
+## True if find_path() would find a full path from one point to the other.
+## Much cheaper than searching when the answer is no: each access level's
+## walkable cells are split into connected areas once per layout change.
+func can_reach(from: Vector3, to: Vector3, access: int) -> bool:
+	_apply_changes()
+	var grid := _get_grid(access)
+	if grid == null:
+		return false
+	var start := _snap_to_walkable(grid, _world_to_cell(from))
+	var goal := _world_to_cell(to)
+	if start.x < 0 or not grid.is_in_boundsv(goal) or grid.is_point_solid(goal):
+		return false
+	var areas := _get_areas(grid, access)
+	var w := grid.region.size.x
+	return areas[start.x + start.y * w] == areas[goal.x + goal.y * w]
 
 
 ## True if a person with this access may stand on the tile.
@@ -226,8 +246,42 @@ func _apply_changes() -> void:
 				_update_cells(_grids[access], access, rect)
 	if _rebuild_all or _has_dirty:
 		_notify = true
+		_areas.clear()
 	_rebuild_all = false
 	_has_dirty = false
+
+
+## Labels every open cell with its connected area (flood fill over the four
+## neighbours, which connect the same cells as the grid's diagonal moves).
+@warning_ignore_start("integer_division")
+func _get_areas(grid: AStarGrid2D, access: int) -> PackedInt32Array:
+	if _areas.has(access):
+		return _areas[access]
+	var w := grid.region.size.x
+	var h := grid.region.size.y
+	var areas := PackedInt32Array()
+	areas.resize(w * h)
+	var label := 0
+	var stack := PackedInt32Array()
+	for start in w * h:
+		if areas[start] != 0 or grid.is_point_solid(Vector2i(start % w, start / w)):
+			continue
+		label += 1
+		areas[start] = label
+		stack.append(start)
+		while not stack.is_empty():
+			var i := stack[stack.size() - 1]
+			stack.resize(stack.size() - 1)
+			var x := i % w
+			var y := i / w
+			for n: int in [i - 1 if x > 0 else -1, i + 1 if x < w - 1 else -1, i - w if y > 0 else -1,
+					i + w if y < h - 1 else -1]:
+				if n >= 0 and areas[n] == 0 and not grid.is_point_solid(Vector2i(n % w, n / w)):
+					areas[n] = label
+					stack.append(n)
+	_areas[access] = areas
+	return areas
+@warning_ignore_restore("integer_division")
 
 
 func _mark_dirty(rect: Rect2i) -> void:

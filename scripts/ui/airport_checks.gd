@@ -10,7 +10,9 @@ extends Node
 ## while passengers are expected (a departure with passengers within
 ## LOOKAHEAD, or passengers in the terminal):
 ##   no terminal entrance, no check-in desk, no security scanner, no gate desk,
-##   and no path from an entrance through security to a gate.
+##   no path from an entrance through security to a gate, and no way out from
+##   the apron doors to an entrance (arriving and missed passengers walk out
+##   that way, and scanners block the doors they stand in).
 ## A terminal problem is resolved once it is fixed, so it alerts again if it
 ## comes back.
 
@@ -20,6 +22,7 @@ const TerminalPathsScript := preload("res://scripts/passengers/terminal_paths.gd
 const Level := AlertsScript.Level
 const LANDSIDE := TerminalPathsScript.Access.LANDSIDE
 const AIRSIDE := TerminalPathsScript.Access.AIRSIDE
+const ARRIVALS := TerminalPathsScript.Access.ARRIVALS
 
 const CHECK_MINUTES := 10
 const LOOKAHEAD := 3 * 3600
@@ -39,6 +42,8 @@ const LOOKAHEAD := 3 * 3600
 ## Gate id -> true if passengers can get there from an entrance, worked out
 ## again when the layout changes.
 var _routes := {}
+## False if no apron door leads through the building to an entrance.
+var _way_out := true
 var _routes_dirty := true
 
 
@@ -87,20 +92,36 @@ func check_terminal() -> void:
 		_routes = {}
 		for gate in gate_list:
 			_routes[gate.id] = _can_reach(gate, entrances, scanners)
+		_way_out = _has_way_out(entrances)
 	for gate in gate_list:
 		_set_problem("path:%d" % gate.id, not _routes.get(gate.id, true),
 			"No path from the entrance to gate #%d" % gate.id)
+	_set_problem("way_out", not _way_out,
+		"No way out from the apron doors to an exit: arriving passengers are stuck (build a door from airside to landside that no scanner stands in)")
 
 
 ## True if a passenger can walk from some entrance to some scanner on
 ## landside, and from that scanner's exit to the gate on airside.
 func _can_reach(gate: RefCounted, entrances: Array, scanners: Array) -> bool:
 	for s in scanners:
-		if terminal_paths.find_path(s.exit, gate.board_point, AIRSIDE).is_empty():
+		if not terminal_paths.can_reach(s.exit, gate.board_point, AIRSIDE):
 			continue
 		for e: Dictionary in entrances:
 			var inside := BuildGrid.tile_to_world(e.inside, floor_index)
 			if not terminal_paths.find_path(inside, s.service, LANDSIDE).is_empty():
+				return true
+	return false
+
+
+## True if there is no apron door, or one of them leads to an entrance.
+func _has_way_out(entrances: Array) -> bool:
+	var doors: Array = gates.get_apron_doors() if gates != null else []
+	if doors.is_empty():
+		return true
+	for door: Dictionary in doors:
+		var from := BuildGrid.tile_to_world(door.inside, floor_index)
+		for e: Dictionary in entrances:
+			if terminal_paths.can_reach(from, BuildGrid.tile_to_world(e.inside, floor_index), ARRIVALS):
 				return true
 	return false
 

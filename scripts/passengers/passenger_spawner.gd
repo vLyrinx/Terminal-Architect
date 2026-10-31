@@ -41,7 +41,11 @@ const SPAWN_SPREAD := 1.2
 const WAIT_INSIDE := 3
 const WAIT_RADIUS := 3
 ## Walking speed in metres per real second at 1x (scaled by the game speed).
-const WALK_SPEED := 1.3
+## Metres walked per game second, so walks keep to the schedule: 150 m through
+## the terminal takes about 20 game minutes. On screen that is 3.6 m/s at 1x.
+const WALK_SPEED := 0.12
+## The walk cycle animation is timed for this real walking speed (m/s).
+const ANIMATION_WALK_SPEED := 1.3
 ## Minimum game seconds between "no entrance" warnings.
 const WARN_INTERVAL := 3600
 
@@ -95,10 +99,11 @@ func set_seed(value: int) -> void:
 
 func _process(delta: float) -> void:
 	if crowd != null:
-		crowd.animation_speed = 0.0 if GameClock.paused else GameClock.speed
+		crowd.animation_speed = 0.0 if GameClock.paused else \
+			GameClock.speed * WALK_SPEED * GameClock.GAME_SECONDS_PER_REAL_SECOND / ANIMATION_WALK_SPEED
 	if GameClock.paused or _walking.is_empty():
 		return
-	var step := WALK_SPEED * GameClock.speed * delta
+	var step := WALK_SPEED * GameClock.GAME_SECONDS_PER_REAL_SECOND * GameClock.speed * delta
 	var still: Array[PassengerScript] = []
 	var done: Array[PassengerScript] = []
 	for p in _walking:

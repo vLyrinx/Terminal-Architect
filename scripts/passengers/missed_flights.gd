@@ -186,7 +186,11 @@ func _nearest_exit(pos: Vector3) -> Dictionary:
 	var best := {}
 	var best_length := INF
 	for e: Dictionary in spawner.get_entrances():
-		var path := terminal_paths.find_path(pos, BuildGrid.tile_to_world(e.inside, floor_index), ARRIVALS)
+		var inside := BuildGrid.tile_to_world(e.inside, floor_index)
+		# A quick check first: a failed search costs a scan of everything reachable.
+		if not terminal_paths.can_reach(pos, inside, ARRIVALS):
+			continue
+		var path := terminal_paths.find_path(pos, inside, ARRIVALS)
 		if path.is_empty():
 			continue
 		var length := 0.0

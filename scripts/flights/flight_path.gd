@@ -11,15 +11,16 @@ extends RefCounted
 ## so nothing snaps. sample() then gives the transform at any time.
 ##
 ## Times are game seconds from the start of the path. Aircraft move at their
-## real speeds divided by TIME_STRETCH, because the game clock runs 72 times
-## faster than real time at 1x: at 1x a landing then plays at about 7 times
-## real speed, quick enough to keep up with the schedule but still readable.
+## real speeds divided by TIME_STRETCH, because the game clock runs 30 times
+## faster than real time at 1x: at 1x a landing then plays at about 6 times
+## real speed, and a 1.2 km taxi takes about 10 game minutes, quick enough to
+## keep up with the schedule but still readable.
 ##
 ## Positions are world space; the aircraft model's origin is between its main
 ## gear, so y = 0 is wheels on the ground and pitching turns about the gear.
 
 const STEP := 10.0
-const TIME_STRETCH := 10.0
+const TIME_STRETCH := 5.0
 const GRAVITY := 9.81
 ## Wheels sit on top of the runway paving (runways.gd PAVING_HEIGHT).
 const GROUND_Y := 0.05
