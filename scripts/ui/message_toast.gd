@@ -1,8 +1,8 @@
 extends PanelContainer
 ## Message box (checklist step 14, restyled in step 15), top centre just under
 ## the top bar: shows why the last command was refused, such as "Not enough
-## money: needs $15,000, you have $9,200", then fades out. Proper alerts come
-## in step 38.
+## money: needs $15,000, you have $9,200", then fades out. Problems in the
+## airport go to the Alerts list instead (alerts.gd, step 38).
 
 const UITheme := preload("res://scripts/ui/ui_theme.gd")
 ## Distance from the top of the screen, below the top bar.

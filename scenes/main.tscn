@@ -1,4 +1,4 @@
-[gd_scene load_steps=62 format=3]
+[gd_scene load_steps=64 format=3]
 
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/debug/scale_markers.gd" id="4_markers"]
@@ -58,6 +58,8 @@
 [ext_resource type="Script" path="res://scripts/passengers/missed_flights.gd" id="70_missed"]
 [ext_resource type="Script" path="res://scripts/economy/airport_fees.gd" id="71_fees"]
 [ext_resource type="Script" path="res://scripts/ui/inspector.gd" id="72_inspector"]
+[ext_resource type="Script" path="res://scripts/ui/alerts.gd" id="73_alerts"]
+[ext_resource type="Script" path="res://scripts/ui/airport_checks.gd" id="74_checks"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.435, 0.659, 0.863, 1)
@@ -153,17 +155,15 @@ taxiways = NodePath("../Taxiways")
 ramps = NodePath("../Ramps")
 runways = NodePath("../Runways")
 
-[node name="StandAllocator" type="Node" parent="." node_paths=PackedStringArray("stands", "message_toast")]
+[node name="StandAllocator" type="Node" parent="." node_paths=PackedStringArray("stands")]
 script = ExtResource("61_allocator")
 stands = NodePath("../Stands")
-message_toast = NodePath("../UI/Root/MessageToast")
 
-[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "route_graph", "stand_allocator", "message_toast", "gates")]
+[node name="AirTraffic" type="Node3D" parent="." node_paths=PackedStringArray("runways", "route_graph", "stand_allocator", "gates")]
 script = ExtResource("62_airtraffic")
 runways = NodePath("../Runways")
 route_graph = NodePath("../RouteGraph")
 stand_allocator = NodePath("../StandAllocator")
-message_toast = NodePath("../UI/Root/MessageToast")
 gates = NodePath("../Gates")
 
 [node name="RouteGraph" type="Node" parent="." node_paths=PackedStringArray("runways", "ramps", "taxi_lines", "stands")]
@@ -234,6 +234,18 @@ gates = NodePath("../Gates")
 script = ExtResource("70_missed")
 terminal_floor = NodePath("../TerminalFloor")
 terminal_paths = NodePath("../TerminalPaths")
+spawner = NodePath("../PassengerSpawner")
+check_in = NodePath("../CheckIn")
+security = NodePath("../Security")
+gates = NodePath("../Gates")
+
+[node name="AirportChecks" type="Node" parent="." node_paths=PackedStringArray("alerts", "stand_allocator", "air_traffic", "terminal_paths", "placed_objects", "spawner", "check_in", "security", "gates")]
+script = ExtResource("74_checks")
+alerts = NodePath("../UI/Root/Alerts")
+stand_allocator = NodePath("../StandAllocator")
+air_traffic = NodePath("../AirTraffic")
+terminal_paths = NodePath("../TerminalPaths")
+placed_objects = NodePath("../PlacedObjects")
 spawner = NodePath("../PassengerSpawner")
 check_in = NodePath("../CheckIn")
 security = NodePath("../Security")
@@ -461,6 +473,15 @@ placed_objects = NodePath("../../../PlacedObjects")
 check_in = NodePath("../../../CheckIn")
 security = NodePath("../../../Security")
 gates = NodePath("../../../Gates")
+
+[node name="Alerts" type="VBoxContainer" parent="UI/Root"]
+layout_mode = 0
+offset_left = 900.0
+offset_top = 48.0
+offset_right = 1240.0
+offset_bottom = 100.0
+mouse_filter = 2
+script = ExtResource("73_alerts")
 
 [node name="FlightList" type="PanelContainer" parent="UI/Root" node_paths=PackedStringArray("air_traffic", "stands", "inspector", "camera")]
 layout_mode = 0
